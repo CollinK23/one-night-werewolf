@@ -1,7 +1,7 @@
 import { boolean, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
 export const werewolfRooms = pgTable('werewolf_rooms', {
-  id: text('id').primaryKey(), code: text('code').notNull().unique(), hostToken: text('host_token').notNull(), status: text('status').notNull().default('lobby'), phase: text('phase').notNull().default('lobby'), maxPlayers: integer('max_players').notNull().default(12), centerRoles: jsonb('center_roles').notNull().default([]), deckRoles: jsonb('deck_roles').notNull().default([]), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  id: text('id').primaryKey(), code: text('code').notNull().unique(), hostToken: text('host_token').notNull(), status: text('status').notNull().default('lobby'), phase: text('phase').notNull().default('lobby'), maxPlayers: integer('max_players').notNull().default(12), centerRoles: jsonb('center_roles').notNull().default([]), deckRoles: jsonb('deck_roles').notNull().default([]), actionSeconds: integer('action_seconds').notNull().default(30), activeRole: text('active_role'), actionStartedAt: timestamp('action_started_at', { withTimezone: true }), createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const werewolfPlayers = pgTable('werewolf_players', {
