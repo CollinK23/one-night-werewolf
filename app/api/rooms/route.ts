@@ -4,8 +4,8 @@ import { and, asc, eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { werewolfPlayers, werewolfRooms } from '@/lib/db/schema'
 
-const NIGHT_ORDER=['Mason','Werewolf','Minion','Seer','Apprentice Seer','Robber','Witch','Troublemaker','Drunk','Insomniac']
-const rolePool=['Werewolf','Werewolf','Seer','Robber','Troublemaker','Drunk','Insomniac','Mason','Mason','Hunter','Tanner','Minion','Apprentice Seer','Witch','Villager','Villager','Villager']
+const NIGHT_ORDER=['Doppelgänger','Mason','Werewolf','Minion','Seer','Robber','Troublemaker','Drunk','Insomniac']
+const rolePool=['Werewolf','Werewolf','Seer','Robber','Troublemaker','Drunk','Insomniac','Mason','Mason','Hunter','Tanner','Minion','Villager','Villager','Villager','Doppelgänger']
 const ROLE_ART:Record<string,string>={Werewolf:'/roles/werewolf.png',Seer:'/roles/seer.png',Tanner:'/roles/tanner.png',Villager:'/roles/villager.png'}
 const makeToken=()=>randomBytes(18).toString('hex'); const makeCode=()=>randomBytes(3).toString('hex').toUpperCase(); const shuffle=<T,>(a:T[])=>[...a].sort(()=>Math.random()-.5)
 async function getRoom(code:string){return(await db.select().from(werewolfRooms).where(eq(werewolfRooms.code,code)).limit(1))[0]}
@@ -33,8 +33,9 @@ async function mutate(body:any){const action=body.action;if(action==='create'){c
   if(player.startingRole==='Witch'){if(body.center===undefined)return NextResponse.json({error:'Look at a center card first.'},{status:400});const oldCenter=centers[Number(body.center)];result.peek=[oldCenter];if(target){centers[Number(body.center)]=target.role!;await db.update(werewolfPlayers).set({role:oldCenter}).where(eq(werewolfPlayers.id,target.id));await db.update(werewolfRooms).set({centerRoles:centers}).where(eq(werewolfRooms.id,room.id))}}
   if(player.startingRole==='Werewolf'&&body.center!==undefined){result.peek=[centers[Number(body.center)]]}
   if(player.startingRole==='Apprentice Seer'&&body.center!==undefined)result.peek=[centers[Number(body.center)]]
-  if(player.startingRole==='Mason')result.peek=players.filter(p=>p.id!==player.id&&p.role==='Mason').map(p=>p.name)
+  if(player.startingRole==='Mason')result.peek=players.filter(p=>p.id!==player.id&&p.startingRole==='Mason').map(p=>`Player ${p.seat}`);if(player.startingRole==='Mason'&&!result.peek.length)result.peek=['No other Mason — check the center cards.']
   if(player.startingRole==='Insomniac')result.peek=[player.role]
+  if(player.startingRole==='Doppelgänger'){if(!target)return NextResponse.json({error:'Choose a player to copy.'},{status:400});result.peek=[target.role!];result.copiedRole=target.role;await db.update(werewolfPlayers).set({role:target.role}).where(eq(werewolfPlayers.id,player.id))}
   await db.update(werewolfPlayers).set({nightAction:result}).where(eq(werewolfPlayers.id,player.id));return NextResponse.json({ok:true})}
  if(action==='finish-night'){if(room.phase!=='night'||room.activeRole!==player.startingRole)return NextResponse.json({error:'It is not your turn.'},{status:400});if(!player.nightAction)return NextResponse.json({error:'Complete your action first.'},{status:400});await advanceNight(room);return NextResponse.json({ok:true})}
  if(action==='vote'){if(room.phase!=='vote'||player.voteFor)return NextResponse.json({error:'Vote unavailable.'},{status:400});await db.update(werewolfPlayers).set({voteFor:body.target||null}).where(eq(werewolfPlayers.id,player.id));const all=await db.select().from(werewolfPlayers).where(eq(werewolfPlayers.roomId,room.id));if(all.every(p=>p.voteFor))await db.update(werewolfRooms).set({phase:'results',updatedAt:new Date()}).where(eq(werewolfRooms.id,room.id));return NextResponse.json({ok:true})}
