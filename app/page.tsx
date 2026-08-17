@@ -54,8 +54,15 @@ const roleInfo: Record<string, { title: string; text: string }> = {
   Doppelgänger: { title: 'Doppelgänger', text: 'Choose one player, look at their starting role, and become that role. Perform that role’s action if it has one.' },
   Villager: { title: 'Villager', text: 'No night action. Listen carefully and decide who is lying.' },
 }
-const ROLE_ART: Record<string, string> = { Werewolf: '/roles/werewolf.png', Seer: '/roles/seer.png', Tanner: '/roles/tanner.png', Villager: '/roles/villager.png' }
-const art = (role: string) => ROLE_ART[role] || '/roles/role-cards.png'
+const ROLE_SHEET = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-t7Wo32vetIDaGJkUq3mgbkxPpXgE5r.png'
+const ROLE_POSITIONS: Record<string, string> = {
+  Werewolf: '0% 0%', Seer: '33.333% 0%', Robber: '66.666% 0%', Troublemaker: '100% 0%',
+  Drunk: '0% 50%', Insomniac: '33.333% 50%', Mason: '66.666% 50%', Hunter: '0% 100%',
+  Minion: '25% 100%', Tanner: '50% 100%', Villager: '75% 100%', Doppelgänger: '100% 100%',
+}
+function RoleIcon({ role, className = '' }: { role: string; className?: string }) {
+  return <div aria-label={`${role} role icon`} role="img" className={`bg-no-repeat ${className}`} style={{ backgroundImage: `url(${ROLE_SHEET})`, backgroundPosition: ROLE_POSITIONS[role] || '0% 0%', backgroundSize: '400% 300%' }} />
+}
 
 export default function Page() {
   const [name, setName] = useState('')
@@ -414,7 +421,7 @@ function Reveal({ role, info, isHost, remaining, onAdvance }: { role: string; in
         <div className="flex aspect-[.75] flex-col justify-between border border-border p-8 text-center">
           <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Your starting card · keep secret</div>
           <div>
-            <img src={art(role) || '/placeholder.svg'} alt={`${info.title} role artwork`} className="mx-auto mb-6 h-40 w-28 rounded-lg object-cover" />
+            <RoleIcon role={role} className="mx-auto mb-6 h-40 w-28 rounded-lg bg-black" />
             <h3 className="font-serif text-5xl">{info.title}</h3>
             <p className="mx-auto mt-5 max-w-xs leading-7 text-muted-foreground">{info.text}</p>
           </div>
