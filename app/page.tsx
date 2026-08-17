@@ -26,6 +26,7 @@ type Room = {
   actionStartedAt?: string | null
   players: Player[]
   centerRoles: string[]
+  enabledRoles?: string[]
   eliminatedIds?: string[]
   outcome?: string | null
   me?: {
@@ -227,7 +228,15 @@ export default function Page() {
               </button>
             </div>
 
-            {room.phase === 'lobby' && <Lobby room={room} onStart={() => act('start')} onSettings={(seconds) => act('settings', { seconds: String(seconds) })} error={error} />}
+            {room.phase === 'lobby' && (
+              <Lobby
+                room={room}
+                onStart={() => act('start')}
+                onSettings={(seconds) => act('settings', { seconds: String(seconds) })}
+                onRoles={(roles) => act('settings', { roles: JSON.stringify(roles) })}
+                error={error}
+              />
+            )}
             {room.phase === 'reveal' && <Reveal role={role} info={info} isHost={Boolean(me?.isHost)} remaining={room.remainingSeconds || 0} onAdvance={() => act('advance')} />}
             {room.phase === 'night' && (
               <>
@@ -265,7 +274,98 @@ export default function Page() {
   )
 }
 
-function Lobby({ room, onStart, onSettings, error }: { room: Room; onStart: () => void; onSettings: (seconds: number) => void; error: string }) {
+const SINGLE_ROLES = ['Seer', 'Robber', 'Troublemaker', 'Drunk', 'Insomniac', 'Hunter', 'Minion', 'Tanner', 'Doppelgänger']
+function poolCounts(roles: string[]) {
+  const wolves = roles.filter((r) => r === 'Werewolf').length
+  const villagers = roles.filter((r) => r === 'Villager').length
+  const masons = roles.filter((r) => r === 'Mason').length >= 2
+  const single: Record<string, boolean> = {}
+  for (const r of SINGLE_ROLES) single[r] = roles.includes(r)
+  return { wolves, villagers, masons, single }
+}
+function buildPool(wolves: number, villagers: number, masons: boolean, single: Record<string, boolean>) {
+  const pool: string[] = []
+  for (let i = 0; i < wolves; i++) pool.push('Werewolf')
+  for (let i = 0; i < villagers; i++) pool.push('Villager')
+  if (masons) pool.push('Mason', 'Mason')
+  for (const r of SINGLE_ROLES) if (single[r]) pool.push(r)
+  return pool
+}
+
+function RoleSelector({ roles, onRoles }: { roles: string[]; onRoles: (roles: string[]) => void }) {
+  const initial = poolCounts(roles)
+  const [wolves, setWolves] = useState(initial.wolves)
+  const [villagers, setVillagers] = useState(initial.villagers)
+  const [masons, setMasons] = useState(initial.masons)
+  const [single, setSingle] = useState(initial.single)
+
+  const commit = (next: { wolves?: number; villagers?: number; masons?: boolean; single?: Record<string, boolean> }) => {
+    const w = next.wolves ?? wolves
+    const v = next.villagers ?? villagers
+    const m = next.masons ?? masons
+    const s = next.single ?? single
+    setWolves(w)
+    setVillagers(v)
+    setMasons(m)
+    setSingle(s)
+    onRoles(buildPool(w, v, m, s))
+  }
+
+  const total = wolves + villagers + (masons ? 2 : 0) + SINGLE_ROLES.filter((r) => single[r]).length
+
+  return (
+    <div className="mt-8 border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <span>Roles in play</span>
+        <span className="text-accent">{total} cards selected</span>
+      </div>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between border border-border p-3">
+          <span className="text-sm">Werewolf</span>
+          <div className="flex items-center gap-3">
+            <button onClick={() => commit({ wolves: Math.max(0, wolves - 1) })} className="size-7 border border-border text-sm">
+              −
+            </button>
+            <span className="w-4 text-center font-mono text-sm">{wolves}</span>
+            <button onClick={() => commit({ wolves: Math.min(3, wolves + 1) })} className="size-7 border border-border text-sm">
+              +
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center justify-between border border-border p-3">
+          <span className="text-sm">Villager</span>
+          <div className="flex items-center gap-3">
+            <button onClick={() => commit({ villagers: Math.max(0, villagers - 1) })} className="size-7 border border-border text-sm">
+              −
+            </button>
+            <span className="w-4 text-center font-mono text-sm">{villagers}</span>
+            <button onClick={() => commit({ villagers: Math.min(4, villagers + 1) })} className="size-7 border border-border text-sm">
+              +
+            </button>
+          </div>
+        </div>
+        <button onClick={() => commit({ masons: !masons })} className={`flex items-center justify-between border p-3 text-left ${masons ? 'border-accent bg-accent/10' : 'border-border'}`}>
+          <span className="text-sm">Mason (pair)</span>
+          <span className="font-mono text-xs text-muted-foreground">{masons ? 'included' : 'off'}</span>
+        </button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {SINGLE_ROLES.map((r) => (
+          <button
+            key={r}
+            onClick={() => commit({ single: { ...single, [r]: !single[r] } })}
+            className={`border p-3 text-left text-sm ${single[r] ? 'border-accent bg-accent/10' : 'border-border'}`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground">If there are more players than selected roles, extra Villagers are added automatically to fill the deck.</p>
+    </div>
+  )
+}
+
+function Lobby({ room, onStart, onSettings, onRoles, error }: { room: Room; onStart: () => void; onSettings: (seconds: number) => void; onRoles: (roles: string[]) => void; error: string }) {
   const me = room.players.find((p) => p.isMe)
   return (
     <div className="py-10">
@@ -292,6 +392,10 @@ function Lobby({ room, onStart, onSettings, error }: { room: Room; onStart: () =
           <input type="number" min={10} max={120} defaultValue={room.actionSeconds || 30} onBlur={(e) => onSettings(Number(e.target.value))} className="h-10 w-20 rounded border border-border bg-background px-3" />
           <span className="text-xs text-muted-foreground">10–120 seconds</span>
         </div>
+      )}
+      {me?.isHost && <RoleSelector roles={room.enabledRoles || []} onRoles={onRoles} />}
+      {!me?.isHost && (
+        <div className="mt-8 border border-border bg-card p-4 text-sm text-muted-foreground">The host is choosing which roles are in play.</div>
       )}
       {me?.isHost && (
         <button onClick={onStart} disabled={room.players.length < 3} className="mt-8 flex h-14 items-center gap-3 bg-accent px-7 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
@@ -400,10 +504,19 @@ function NightFixed({
   const [seerMode, setSeerMode] = useState<'player' | 'center'>('player')
   const [seerCenters, setSeerCenters] = useState<string[]>([])
   const active = activeRole === role
+  const soloWolf = peek.some((p) => p.includes('only Werewolf'))
+  const hasCenterPeek = peek.some((p) => p.includes('Center card:'))
+
+  const OriginalRoleBadge = (
+    <div className="mb-5 inline-flex items-center gap-2 border border-border bg-card px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+      Your original role <span className="text-foreground">{role}</span>
+    </div>
+  )
 
   if (!active) {
     return (
       <div className="py-16">
+        <div>{OriginalRoleBadge}</div>
         <div className="mb-5 flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-accent">
           <Moon size={18} /> Everyone is watching
         </div>
@@ -419,6 +532,7 @@ function NightFixed({
 
   return (
     <div className="py-12">
+      <div>{OriginalRoleBadge}</div>
       <div className="mb-5 flex items-center justify-between font-mono text-xs uppercase tracking-widest text-accent">
         <span>{info.title} · night action</span>
         <span className="text-foreground">00:{String(remaining).padStart(2, '0')}</span>
@@ -428,24 +542,22 @@ function NightFixed({
 
       <PeekPanel peek={peek} />
 
+      {(role === 'Insomniac' || role === 'Mason' || role === 'Minion') && (
+        <p className="mt-6 text-sm text-muted-foreground">This information was revealed to you automatically the moment your turn started.</p>
+      )}
+
+      {role === 'Werewolf' && soloWolf && !hasCenterPeek && (
+        <div className="mt-8">
+          <p className="mb-2 text-sm text-muted-foreground">You are the only Werewolf. You may optionally peek at one center card before finishing.</p>
+          <CenterGrid value={center ? [center] : []} onPick={(i) => setCenter(center === i ? '' : i)} />
+          <button onClick={() => onAction({ center })} disabled={!center} className="mt-4 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
+            Peek this center card
+          </button>
+        </div>
+      )}
+
       {!acted && (
         <div className="mt-8">
-          {(role === 'Insomniac' || role === 'Mason' || role === 'Minion') && (
-            <button onClick={() => onAction({})} className="bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground">
-              {role === 'Insomniac' ? 'Reveal my final card' : role === 'Mason' ? 'Look for the other Mason' : 'Wake and look for the Werewolves'}
-            </button>
-          )}
-
-          {role === 'Werewolf' && (
-            <div>
-              <p className="mb-2 text-sm text-muted-foreground">If you are not alone, this reveals your pack. If you are the only Werewolf, you may optionally peek a center card first.</p>
-              <CenterGrid value={center ? [center] : []} onPick={(i) => setCenter(center === i ? '' : i)} />
-              <button onClick={() => onAction({ center: center || undefined })} className="mt-4 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground">
-                Wake and look for the pack
-              </button>
-            </div>
-          )}
-
           {role === 'Seer' && (
             <div>
               <div className="mb-5 flex gap-3">
