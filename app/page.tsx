@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowRight, Copy, Moon, Shield, Sparkles, Users, Vote, Wand2 } from 'lucide-react'
+import { ArrowRight, Copy, Moon, RotateCcw, Shield, Sparkles, Users, Vote, Wand2 } from 'lucide-react'
 
 type Player = {
   id: string
@@ -265,7 +265,7 @@ export default function Page() {
             )}
             {room.phase === 'discussion' && <Discussion room={room} isHost={Boolean(me?.isHost)} onAdvance={() => act('advance')} />}
             {room.phase === 'vote' && <VotePanel room={room} selected={selected} setSelected={setSelected} acted={Boolean(me?.hasVoted)} onVote={() => act('vote', { target: selected })} />}
-            {room.phase === 'results' && <Results room={room} />}
+            {room.phase === 'results' && <Results room={room} isHost={Boolean(me?.isHost)} onRestart={() => act('restart')} />}
             {error && <p className="mt-6 text-sm text-destructive">{error}</p>}
           </section>
         )}
@@ -717,7 +717,7 @@ function VotePanel({ room, selected, setSelected, acted, onVote }: { room: Room;
   )
 }
 
-function Results({ room }: { room: Room }) {
+function Results({ room, isHost, onRestart }: { room: Room; isHost: boolean; onRestart: () => void }) {
   const eliminated = room.players.filter((p) => room.eliminatedIds?.includes(p.id))
   return (
     <div className="py-14">
@@ -745,6 +745,11 @@ function Results({ room }: { room: Room }) {
           ))}
         </div>
         <div className="mt-6 border-t border-border pt-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Center cards: {room.centerRoles.join(' · ')}</div>
+        {isHost && (
+          <button onClick={onRestart} className="mt-8 flex h-12 items-center gap-3 bg-accent px-6 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground">
+            <RotateCcw size={15} /> Restart game
+          </button>
+        )}
       </div>
     </div>
   )

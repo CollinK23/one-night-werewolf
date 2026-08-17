@@ -234,6 +234,13 @@ async function mutate(body: any) {
     return NextResponse.json({ ok: true })
   }
 
+  if (action === 'restart') {
+    if (!player.isHost) return NextResponse.json({ error: 'Only the host can restart.' }, { status: 403 })
+    await db.update(werewolfPlayers).set({ startingRole: null, role: null, nightAction: null, voteFor: null }).where(eq(werewolfPlayers.roomId, room.id))
+    await db.update(werewolfRooms).set({ status: 'lobby', phase: 'lobby', activeRole: null, actionStartedAt: null, centerRoles: [], deckRoles: [], updatedAt: new Date() }).where(eq(werewolfRooms.id, room.id))
+    return NextResponse.json({ ok: true })
+  }
+
   if (action === 'start') {
     if (!player.isHost) return NextResponse.json({ error: 'Only the host can start.' }, { status: 403 })
     const players = await getPlayers(room.id)
