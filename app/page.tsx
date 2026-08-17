@@ -263,11 +263,6 @@ export default function Page() {
                   peek={room.me?.nightAction?.peek || []}
                   onAction={(x) => act('night', x)}
                 />
-                {room.activeRole === role && me?.hasActed && (
-                  <button onClick={() => act('finish-night')} className="mt-6 flex h-14 items-center justify-center gap-3 bg-accent px-7 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground">
-                    Finish my action <ArrowRight size={15} />
-                  </button>
-                )}
               </>
             )}
             {room.phase === 'discussion' && <Discussion room={room} isHost={Boolean(me?.isHost)} onAdvance={() => act('advance')} />}
@@ -472,7 +467,7 @@ function PeekPanel({ peek }: { peek: string[] }) {
           {p}
         </p>
       ))}
-      <p className="mt-3 text-sm text-muted-foreground">Only you can see this. The timer keeps running — press Finish my action when ready.</p>
+      <p className="mt-3 text-sm text-muted-foreground">Only you can see this. The role timer continues for the full duration.</p>
     </div>
   )
 }

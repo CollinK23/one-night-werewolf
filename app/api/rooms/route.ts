@@ -24,10 +24,9 @@ async function getPlayer(roomId: string, token: string) {
 async function getPlayers(roomId: string) {
   return db.select().from(werewolfPlayers).where(eq(werewolfPlayers.roomId, roomId)).orderBy(asc(werewolfPlayers.seat))
 }
-async function nextRole(roomId: string, current: string | null) {
-  const all = await getPlayers(roomId)
+async function nextRole(_roomId: string, current: string | null) {
   const i = Math.max(-1, NIGHT_ORDER.indexOf(current || ''))
-  return NIGHT_ORDER.slice(i + 1).find((r) => all.some((p) => p.startingRole === r)) || null
+  return NIGHT_ORDER[i + 1] || null
 }
 function centerCards(room: any) {
   return Array.isArray(room.centerRoles) ? ([...room.centerRoles] as string[]) : []
@@ -260,7 +259,6 @@ async function mutate(body: any) {
   if (action === 'advance') {
     if (!player.isHost) return NextResponse.json({ error: 'Only the host can advance.' }, { status: 403 })
     if (room.phase === 'reveal') await advanceReveal(room)
-    else if (room.phase === 'night') await advanceNight(room)
     else if (room.phase === 'discussion') await db.update(werewolfRooms).set({ phase: 'vote', updatedAt: new Date() }).where(eq(werewolfRooms.id, room.id))
     return NextResponse.json({ ok: true })
   }
@@ -321,12 +319,7 @@ async function mutate(body: any) {
     return NextResponse.json({ ok: true })
   }
 
-  if (action === 'finish-night') {
-    if (room.phase !== 'night' || room.activeRole !== player.startingRole) return NextResponse.json({ error: 'It is not your turn.' }, { status: 400 })
-    if (!player.nightAction) return NextResponse.json({ error: 'Complete your action first.' }, { status: 400 })
-    await advanceNight(room)
-    return NextResponse.json({ ok: true })
-  }
+
 
   if (action === 'vote') {
     if (room.phase !== 'vote' || player.voteFor) return NextResponse.json({ error: 'Vote unavailable.' }, { status: 400 })
