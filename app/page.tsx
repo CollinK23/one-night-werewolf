@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowRight, Copy, Crown, Moon, RotateCcw, Shield, Sparkles, Users, Wand2 } from 'lucide-react'
+import { ArrowRight, Copy, Crown, Eye, Moon, RotateCcw, Shield, Sparkles, Users, Wand2 } from 'lucide-react'
 
 type Player = {
   id: string
@@ -22,6 +22,7 @@ type Room = {
   status?: string
   actionSeconds?: number
   activeRole?: string | null
+  activeRoleHasPlayer?: boolean
   remainingSeconds?: number
   actionStartedAt?: string | null
   players: Player[]
@@ -29,14 +30,16 @@ type Room = {
   enabledRoles?: string[]
   eliminatedIds?: string[]
   outcome?: string | null
+  spectatorCount?: number
   me?: {
     id: string
     name: string
     isHost: boolean
+    isSpectator?: boolean
     startingRole?: string | null
     finalRole?: string | null
     roleArt?: string | null
-    nightAction?: { peek?: string[]; target?: string; target2?: string; center?: string; center2?: string } | null
+    nightAction?: { peek?: string[]; target?: string; target2?: string; center?: string; center2?: string; copiedRole?: string; completed?: boolean } | null
   }
 }
 
@@ -57,11 +60,16 @@ const roleInfo: Record<string, { title: string; text: string }> = {
 const ROLE_SHEET = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-t7Wo32vetIDaGJkUq3mgbkxPpXgE5r.png'
 const ROLE_POSITIONS: Record<string, string> = {
   Werewolf: '0% 0%', Seer: '33.333% 0%', Robber: '66.666% 0%', Troublemaker: '100% 0%',
-  Drunk: '0% 50%', Insomniac: '33.333% 50%', Mason: '66.666% 50%', Hunter: '0% 100%',
-  Minion: '25% 100%', Tanner: '50% 100%', Villager: '75% 100%', Doppelgänger: '100% 100%',
+  Drunk: '0% 50%', Insomniac: '33.333% 50%', Mason: '66.666% 50%', Hunter: '100% 50%',
+  Minion: '0% 100%', Tanner: '33.333% 100%', Villager: '66.666% 100%', Doppelgänger: '100% 100%',
 }
 function RoleIcon({ role, className = '' }: { role: string; className?: string }) {
-  return <div aria-label={`${role} role icon`} role="img" className={`bg-no-repeat ${className}`} style={{ backgroundImage: `url(${ROLE_SHEET})`, backgroundPosition: ROLE_POSITIONS[role] || '0% 0%', backgroundSize: '400% 300%' }} />
+  return <div aria-label={`${role} role card`} role="img" className={`role-art bg-no-repeat ${className}`} style={{ backgroundImage: `url(${ROLE_SHEET})`, backgroundPosition: ROLE_POSITIONS[role] || '0% 0%', backgroundSize: '400% 300%' }} />
+}
+
+function PhaseProgress({ remaining, total }: { remaining: number; total: number }) {
+  const percentage = total > 0 ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0
+  return <div className="phase-progress" role="progressbar" aria-label="Phase time remaining" aria-valuemin={0} aria-valuemax={total} aria-valuenow={remaining}><span style={{ width: `${percentage}%` }} /></div>
 }
 
 export default function Page() {
@@ -78,7 +86,7 @@ export default function Page() {
   const [copied, setCopied] = useState(false)
 
   const enter = useCallback(
-    async (action: 'create' | 'join') => {
+    async (action: 'create' | 'join' | 'spectate') => {
       setError('')
       const r = await fetch('/api/rooms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, name, code: codeInput }) })
       const d = await r.json()
@@ -110,7 +118,7 @@ export default function Page() {
     setSelected2('')
     setCenter('')
     setSelectedCenters([])
-  }, [room?.phase, room?.activeRole])
+  }, [room?.phase, room?.activeRole, room?.me?.nightAction?.copiedRole])
 
   const act = async (action: string, extra: Record<string, string | undefined> = {}) => {
     setError('')
@@ -131,6 +139,9 @@ export default function Page() {
   const me = room?.players.find((p) => p.isMe)
   const role = room?.phase === 'results' ? me?.role || me?.startingRole || 'Villager' : me?.startingRole || me?.role || 'Villager'
   const info = roleInfo[role] || roleInfo.Villager
+  const copiedRole = room?.me?.nightAction?.completed === false ? room.me.nightAction.copiedRole : null
+  const actionRole = copiedRole || role
+  const actionInfo = roleInfo[actionRole] || info
   const copy = async () => {
     await navigator.clipboard?.writeText(codeInput)
     setCopied(true)
@@ -206,6 +217,9 @@ export default function Page() {
             <button onClick={() => enter('join')} disabled={codeInput.length < 6} className="mt-4 h-14 rounded-md bg-accent font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-40">
               Join room
             </button>
+            <button onClick={() => enter('spectate')} disabled={codeInput.length < 6} className="mt-3 flex h-14 items-center justify-center gap-3 rounded-md border border-accent/50 bg-accent/10 font-mono text-xs font-bold uppercase tracking-widest text-accent disabled:opacity-40">
+              <Eye size={16} /> Join as spectator
+            </button>
             <div className="my-8 flex items-center gap-4 text-xs text-muted-foreground">
               <span className="h-px flex-1 bg-border" />
               or
@@ -223,7 +237,7 @@ export default function Page() {
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <div className="font-mono text-[10px] uppercase tracking-[.3em] text-accent">Private table</div>
-                <h2 className="mt-1 font-serif text-2xl md:text-3xl">Miller's Hollow</h2>
+                <h2 className="mt-1 font-serif text-2xl md:text-3xl">Miller's Hollow{room.me?.isSpectator ? ' · Spectator' : ''}</h2>
               </div>
               <button onClick={copy} className="flex h-11 items-center gap-3 rounded-md border border-accent/50 bg-accent/10 px-4 font-mono text-sm tracking-[.25em] text-accent">
                 {codeInput}
@@ -234,8 +248,8 @@ export default function Page() {
 
             <GameTable
               room={room}
-              role={role}
-              info={info}
+              role={actionRole}
+              info={actionInfo}
               selected={selected}
               selected2={selected2}
               selectedCenters={selectedCenters}
@@ -267,7 +281,9 @@ export default function Page() {
               <div className="mb-7 border-b border-border pb-6">
                 <div className="font-mono text-xs uppercase tracking-[.3em] text-accent">{room.phase === 'lobby' ? 'Waiting room' : room.phase.toUpperCase()}</div>
                 <h2 className="mt-2 font-serif text-4xl md:text-5xl">
-                  {room.phase === 'lobby'
+                  {room.me?.isSpectator
+                    ? 'Live from the table.'
+                    : room.phase === 'lobby'
                     ? 'Gather your pack.'
                     : room.phase === 'reveal'
                       ? 'Your starting role.'
@@ -281,7 +297,9 @@ export default function Page() {
                 </h2>
               </div>
 
-            {room.phase === 'lobby' && (
+            {room.me?.isSpectator ? (
+              <SpectatorPanel room={room} />
+            ) : room.phase === 'lobby' && (
               <Lobby
                 room={room}
                 onStart={() => act('start')}
@@ -290,21 +308,22 @@ export default function Page() {
                 error={error}
               />
             )}
-            {room.phase === 'reveal' && <Reveal role={role} info={info} isHost={Boolean(me?.isHost)} remaining={room.remainingSeconds || 0} onAdvance={() => act('advance')} />}
-            {room.phase === 'night' && (
+            {!room.me?.isSpectator && room.phase === 'reveal' && <Reveal role={role} info={info} isHost={Boolean(me?.isHost)} remaining={room.remainingSeconds || 0} onAdvance={() => act('advance')} />}
+            {!room.me?.isSpectator && room.phase === 'night' && (
               <>
                 <NightFixed
                   role={role}
                   activeRole={room.activeRole || ''}
                   remaining={room.remainingSeconds || 0}
-                  info={info}
+                  total={room.actionSeconds || 30}
+                  info={actionInfo}
                   acted={Boolean(me?.hasActed)}
                   peek={room.me?.nightAction?.peek || []}
                 />
               </>
             )}
-            {room.phase === 'discussion' && <Discussion room={room} isHost={Boolean(me?.isHost)} onAdvance={() => act('advance')} />}
-            {room.phase === 'results' && <Results room={room} isHost={Boolean(me?.isHost)} onRestart={() => act('restart')} />}
+            {!room.me?.isSpectator && room.phase === 'discussion' && <Discussion room={room} isHost={Boolean(me?.isHost)} onAdvance={() => act('advance')} />}
+            {!room.me?.isSpectator && room.phase === 'results' && <Results room={room} isHost={Boolean(me?.isHost)} onRestart={() => act('restart')} />}
             {error && <p className="mt-6 text-sm text-destructive">{error}</p>}
             </div>
           </section>
@@ -327,8 +346,10 @@ function GameTable({ room, role, info, selected, selected2, selectedCenters, cen
   onAction: (action: string, extra?: Record<string, string | undefined>) => void
 }) {
   const orderedPlayers = [...room.players].sort((a, b) => Number(Boolean(b.isMe)) - Number(Boolean(a.isMe)))
+  const isSpectator = Boolean(room.me?.isSpectator)
   const isResults = room.phase === 'results'
-  const isMyNightTurn = room.phase === 'night' && room.activeRole === role
+  const me = room.players.find((player) => player.isMe)
+  const isMyNightTurn = !isSpectator && room.phase === 'night' && room.activeRole === me?.startingRole
   const nightPrompt: Record<string, string> = {
     Seer: 'Pick a seat or 2 cards',
     Robber: 'Pick a seat to rob',
@@ -340,19 +361,18 @@ function GameTable({ room, role, info, selected, selected2, selectedCenters, cen
   const status = room.phase === 'lobby'
     ? `${room.players.length} seated`
     : room.phase === 'night'
-      ? isMyNightTurn && nightPrompt[role] ? nightPrompt[role] : `${room.activeRole || 'Village'} wakes`
+      ? !room.activeRoleHasPlayer ? `No ${room.activeRole || 'role'} wakes` : isMyNightTurn && nightPrompt[role] ? nightPrompt[role] : `${room.activeRole || 'Village'} wakes`
       : room.phase === 'discussion'
         ? 'Table talk'
         : room.phase === 'vote'
           ? 'Final vote'
           : room.phase === 'results'
-            ? 'Cards revealed'
+            ? isSpectator ? 'Round complete' : 'Cards revealed'
             : 'Cards dealt'
-  const me = room.players.find((player) => player.isMe)
   const isSoloWerewolf = room.me?.nightAction?.peek?.some((message) => message.includes('only Werewolf'))
   const playerTargetingRoles = ['Seer', 'Robber', 'Troublemaker', 'Doppelgänger']
   const canAct = !me?.hasActed || role === 'Werewolf'
-  const canPickPlayers = (room.phase === 'vote' && !me?.hasVoted) || (isMyNightTurn && canAct && playerTargetingRoles.includes(role))
+  const canPickPlayers = !isSpectator && ((room.phase === 'vote' && !me?.hasVoted) || (isMyNightTurn && canAct && playerTargetingRoles.includes(role)))
   const canPickCenters = isMyNightTurn && canAct && (role === 'Drunk' || role === 'Seer' || (role === 'Werewolf' && Boolean(isSoloWerewolf)))
 
   return (
@@ -365,8 +385,8 @@ function GameTable({ room, role, info, selected, selected2, selectedCenters, cen
           </div>
           <div className="table-status">
             <span className={`status-light ${room.phase === 'night' ? 'is-night' : ''}`} />
-            {status}
-            {room.phase === 'night' && <strong>00:{String(room.remainingSeconds || 0).padStart(2, '0')}</strong>}
+            <span>{status}</span>
+            {room.phase === 'night' && <PhaseProgress remaining={room.remainingSeconds || 0} total={room.actionSeconds || 30} />}
           </div>
 
           <div className="center-cards" aria-label="Center cards">
@@ -411,8 +431,8 @@ function GameTable({ room, role, info, selected, selected2, selectedCenters, cen
                 aria-label={`Select ${player.name}, seat ${player.seat}`}
                 key={player.id}
               >
-                <div className={`player-card ${isResults || (player.isMe && room.phase !== 'lobby') ? 'is-face-up' : 'is-face-down'}`}>
-                  {isResults || (player.isMe && room.phase !== 'lobby') ? (
+                <div className={`player-card ${isResults || (!isSpectator && player.isMe && room.phase !== 'lobby') ? 'is-face-up' : 'is-face-down'}`}>
+                  {isResults || (!isSpectator && player.isMe && room.phase !== 'lobby') ? (
                     <RoleIcon role={(isResults ? player.role : role) || 'Villager'} className="player-role-art" />
                   ) : (
                     <Moon size={18} />
@@ -454,8 +474,10 @@ function BoardActionDock({ room, role, info, selected, selected2, selectedCenter
   center: string
   onAction: (action: string, extra?: Record<string, string | undefined>) => void
 }) {
+  if (room.me?.isSpectator) return <SpectatorNarration room={room} />
+
   const me = room.players.find((player) => player.isMe)
-  const active = room.phase === 'night' && room.activeRole === role
+  const active = room.phase === 'night' && room.activeRole === me?.startingRole
   const peek = room.me?.nightAction?.peek || []
   const soloWolf = peek.some((message) => message.includes('only Werewolf'))
   const hasCenterPeek = peek.some((message) => message.includes('Center card:'))
@@ -526,6 +548,38 @@ function BoardActionDock({ room, role, info, selected, selected2, selectedCenter
     <div className="table-action-dock">
       <div><strong>{info.title} action</strong><span>{instruction}</span></div>
       <button disabled={disabled} onClick={() => onAction('night', submit)}>{label}</button>
+    </div>
+  )
+}
+
+function narrationFor(room: Room) {
+  if (room.phase === 'lobby') return `${room.players.length} players are seated. The host is preparing a deck of ${room.players.length + 3} cards.`
+  if (room.phase === 'reveal') return `The cards have been dealt. Each player is privately learning their starting role. Night falls in ${room.remainingSeconds || 0} seconds.`
+  if (room.phase === 'night') return room.activeRoleHasPlayer
+    ? `The village sleeps. ${room.activeRole || 'The next role'} is awake, and their move remains hidden. ${room.remainingSeconds || 0} seconds remain.`
+    : `The ${room.activeRole || 'next role'} card is in the center, so no player wakes. The village waits ${room.remainingSeconds || 0} more seconds before continuing.`
+  if (room.phase === 'discussion') return 'Morning breaks over the village. The players compare stories, make accusations, and try to reconstruct the hidden swaps.'
+  if (room.phase === 'vote') return `${room.players.filter((player) => player.hasVoted).length} of ${room.players.length} votes are locked. No choice is revealed until everyone has voted.`
+  if (room.phase === 'results') return room.outcome || 'The final votes are counted, but the cards remain hidden from the spectator gallery.'
+  return 'The table is waiting for the next chapter.'
+}
+
+function SpectatorNarration({ room }: { room: Room }) {
+  return (
+    <div className="table-action-dock spectator-narration" aria-live="polite">
+      <Eye size={18} />
+      <div><strong>Live narration</strong><span>{narrationFor(room)}</span></div>
+    </div>
+  )
+}
+
+function SpectatorPanel({ room }: { room: Room }) {
+  return (
+    <div className="py-12">
+      <div className="mb-5 flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-accent"><Eye size={18} /> Spectator gallery</div>
+      <h3 className="font-serif text-5xl">Watching from the shadows.</h3>
+      <p className="mt-5 max-w-2xl text-xl leading-8 text-muted-foreground">{narrationFor(room)}</p>
+      <p className="mt-8 border-l-2 border-accent/60 pl-4 text-sm text-muted-foreground">Private actions remain hidden during play. When voting ends, every player and center card is revealed.</p>
     </div>
   )
 }
@@ -680,7 +734,7 @@ function Reveal({ role, info, isHost, remaining, onAdvance }: { role: string; in
           <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Do not show this card</div>
         </div>
       </div>
-      <p className="mt-6 text-center font-mono text-xs uppercase tracking-widest text-accent">Night begins in 00:{String(remaining).padStart(2, '0')}</p>
+      <div className="mt-6"><PhaseProgress remaining={remaining} total={15} /></div>
       {isHost && (
         <button onClick={onAdvance} className="mt-8 flex w-full items-center justify-center gap-3 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground">
           Begin the night now <ArrowRight size={15} />
@@ -709,6 +763,7 @@ function NightFixed({
   role,
   activeRole,
   remaining,
+  total,
   info,
   acted,
   peek,
@@ -716,6 +771,7 @@ function NightFixed({
   role: string
   activeRole: string
   remaining: number
+  total: number
   info: { title: string; text: string }
   acted: boolean
   peek: string[]
@@ -736,7 +792,8 @@ function NightFixed({
           <Moon size={18} /> Everyone is watching
         </div>
         <h3 className="font-serif text-5xl">The {activeRole || 'next role'} is now looking at cards.</h3>
-        <p className="mt-5 max-w-xl leading-7 text-muted-foreground">Keep your eyes down. Their action resolves in {remaining} seconds or less, then the next role wakes.</p>
+        <p className="mt-5 max-w-xl leading-7 text-muted-foreground">Keep your eyes down. When this turn ends, the next role wakes.</p>
+        <div className="mt-6"><PhaseProgress remaining={remaining} total={total} /></div>
       </div>
     )
   }
@@ -746,8 +803,8 @@ function NightFixed({
       <div>{OriginalRoleBadge}</div>
       <div className="mb-5 flex items-center justify-between font-mono text-xs uppercase tracking-widest text-accent">
         <span>{info.title} · night action</span>
-        <span className="text-foreground">00:{String(remaining).padStart(2, '0')}</span>
       </div>
+      <PhaseProgress remaining={remaining} total={total} />
       <h3 className="font-serif text-5xl">{info.title} wakes.</h3>
       <p className="mt-4 max-w-xl leading-7 text-muted-foreground">{info.text}</p>
 
