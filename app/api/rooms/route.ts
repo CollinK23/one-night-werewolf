@@ -21,12 +21,15 @@ async function getRoom(code: string) {
 async function getPlayer(roomId: string, token: string) {
   return (await db.select().from(werewolfPlayers).where(and(eq(werewolfPlayers.roomId, roomId), eq(werewolfPlayers.token, token))).limit(1))[0]
 }
-async function getPlayers(roomId: string) {
+async function getMembers(roomId: string) {
   return db.select().from(werewolfPlayers).where(eq(werewolfPlayers.roomId, roomId)).orderBy(asc(werewolfPlayers.seat))
 }
+async function getPlayers(roomId: string) {
+  return (await getMembers(roomId)).filter((member) => member.seat > 0)
+}
 async function nextRole(roomId: string, current: string | null) {
-  const players = await getPlayers(roomId)
-  const dealtRoles = new Set(players.map((player) => player.startingRole).filter(Boolean))
+  const room = (await db.select().from(werewolfRooms).where(eq(werewolfRooms.id, roomId)).limit(1))[0]
+  const dealtRoles = new Set(Array.isArray(room?.deckRoles) ? room.deckRoles as string[] : [])
   const rolesInPlay = NIGHT_ORDER.filter((role) => dealtRoles.has(role))
   const index = Math.max(-1, rolesInPlay.indexOf(current || ''))
   return rolesInPlay[index + 1] || null
@@ -46,10 +49,10 @@ function effectiveRole(p: any) {
   return p.startingRole
 }
 function wolfPack(players: any[], selfId: string) {
-  return players.filter((p) => p.id !== selfId && effectiveRole(p) === 'Werewolf').map((p) => `Player ${p.seat}`)
+  return players.filter((p) => p.id !== selfId && effectiveRole(p) === 'Werewolf').map((p) => p.name)
 }
 function allWolves(players: any[]) {
-  return players.filter((p) => effectiveRole(p) === 'Werewolf').map((p) => `Player ${p.seat}`)
+  return players.filter((p) => effectiveRole(p) === 'Werewolf').map((p) => p.name)
 }
 function masonPair(players: any[], selfId: string) {
   return players.filter((p) => p.id !== selfId && effectiveRole(p) === 'Mason').map((p) => `Player ${p.seat}`)
@@ -117,6 +120,10 @@ function computeOutcome(rows: any[]) {
   for (const p of rows) if (p.voteFor) counts[p.voteFor] = (counts[p.voteFor] || 0) + 1
   const max = Math.max(0, ...Object.values(counts))
   const eliminatedIds = max > 0 ? Object.keys(counts).filter((id) => counts[id] === max) : []
+  for (let index = 0; index < eliminatedIds.length; index++) {
+    const hunter = rows.find((player) => player.id === eliminatedIds[index] && player.role === 'Hunter')
+    if (hunter?.voteFor && !eliminatedIds.includes(hunter.voteFor)) eliminatedIds.push(hunter.voteFor)
+  }
   const eliminatedRoles = rows.filter((p) => eliminatedIds.includes(p.id)).map((p) => p.role)
   const anyWerewolf = rows.some((p) => p.role === 'Werewolf')
   let outcome: string
@@ -131,7 +138,9 @@ async function payload(code: string, token?: string) {
   const room = await getRoom(code)
   if (!room) return null
   const rows = await getPlayers(room.id)
-  const me = rows.find((p) => p.token === token)
+  const members = await getMembers(room.id)
+  const me = members.find((p) => p.token === token)
+  const isSpectator = me?.seat === 0
   const started = room.actionStartedAt ? new Date(room.actionStartedAt).getTime() : Date.now()
   const elapsed = Math.floor((Date.now() - started) / 1000)
   const remaining = room.phase === 'reveal' ? Math.max(0, REVEAL_SECONDS - elapsed) : room.phase === 'night' ? Math.max(0, room.actionSeconds - elapsed) : room.actionSeconds
@@ -143,10 +152,12 @@ async function payload(code: string, token?: string) {
     phase: room.phase,
     actionSeconds: room.actionSeconds,
     activeRole: room.activeRole,
+    activeRoleHasPlayer: room.phase === 'night' && rows.some((player) => player.startingRole === room.activeRole),
     actionStartedAt: room.actionStartedAt,
     remainingSeconds: remaining,
     centerRoles: room.phase === 'results' ? room.centerRoles : [],
     enabledRoles: Array.isArray(room.enabledRoles) && room.enabledRoles.length ? room.enabledRoles : DEFAULT_ROLE_POOL,
+    spectatorCount: members.filter((member) => member.seat === 0).length,
     eliminatedIds,
     outcome,
     me: me
@@ -154,10 +165,11 @@ async function payload(code: string, token?: string) {
           id: me.id,
           name: me.name,
           isHost: me.isHost,
-          startingRole: me.startingRole,
-          finalRole: room.phase === 'results' ? me.role : null,
-          roleArt: me.role ? ROLE_ART[me.role] || '/roles/role-cards.png' : null,
-          nightAction: privateAction || null,
+          isSpectator,
+          startingRole: isSpectator ? null : me.startingRole,
+          finalRole: room.phase === 'results' && !isSpectator ? me.role : null,
+          roleArt: !isSpectator && me.role ? ROLE_ART[me.role] || '/roles/role-cards.png' : null,
+          nightAction: isSpectator ? null : privateAction || null,
         }
       : null,
     players: rows.map((p) => ({
@@ -166,12 +178,12 @@ async function payload(code: string, token?: string) {
       isHost: p.isHost,
       isMe: p.token === token,
       seat: p.seat,
-      hasActed: Boolean(p.nightAction),
+      hasActed: !isSpectator && Boolean(p.nightAction) && (p.nightAction as any)?.completed !== false,
       hasVoted: Boolean(p.voteFor),
-      role: room.phase === 'results' || p.token === token ? p.role : null,
-      startingRole: p.token === token ? p.startingRole : room.phase === 'results' ? p.startingRole : null,
+      role: room.phase === 'results' || (!isSpectator && p.token === token) ? p.role : null,
+      startingRole: room.phase === 'results' || (!isSpectator && p.token === token) ? p.startingRole : null,
       voteFor: room.phase === 'results' ? p.voteFor : null,
-      roleArt: (room.phase === 'results' || p.token === token) && p.role ? ROLE_ART[p.role] || '/roles/role-cards.png' : null,
+      roleArt: (room.phase === 'results' || (!isSpectator && p.token === token)) && p.role ? ROLE_ART[p.role] || '/roles/role-cards.png' : null,
     })),
   }
 }
@@ -214,14 +226,16 @@ async function mutate(body: any) {
   const token = String(body.token || '')
   const player = await getPlayer(room.id, token)
 
-  if (action === 'join') {
+  if (action === 'join' || action === 'spectate') {
     const current = await getPlayers(room.id)
-    if (current.length >= 10) return NextResponse.json({ error: 'This game supports up to 10 players.' }, { status: 400 })
+    if (action === 'join' && room.phase !== 'lobby') return NextResponse.json({ error: 'This game has already started. Join as a spectator instead.' }, { status: 400 })
+    if (action === 'join' && current.length >= 10) return NextResponse.json({ error: 'This game supports up to 10 players.' }, { status: 400 })
     const joinToken = makeToken()
-    await db.insert(werewolfPlayers).values({ id: randomUUID(), roomId: room.id, token: joinToken, name: String(body.name || 'Player').trim().slice(0, 24) || 'Player', seat: current.length + 1, isHost: false })
+    await db.insert(werewolfPlayers).values({ id: randomUUID(), roomId: room.id, token: joinToken, name: String(body.name || (action === 'spectate' ? 'Spectator' : 'Player')).trim().slice(0, 24) || (action === 'spectate' ? 'Spectator' : 'Player'), seat: action === 'spectate' ? 0 : current.length + 1, isHost: false })
     return NextResponse.json({ code, token: joinToken })
   }
   if (!player) return NextResponse.json({ error: 'Player not found.' }, { status: 403 })
+  if (player.seat === 0) return NextResponse.json({ error: 'Spectators cannot perform game actions.' }, { status: 403 })
 
   if (action === 'settings') {
     if (!player.isHost || room.phase !== 'lobby') return NextResponse.json({ error: 'Host only in lobby.' }, { status: 403 })
@@ -277,74 +291,80 @@ async function mutate(body: any) {
     if (activeRoom.phase !== 'night' || activeRoom.activeRole !== player.startingRole) return NextResponse.json({ error: 'It is not your turn.' }, { status: 400 })
     if ((Date.now() - new Date(activeRoom.actionStartedAt || Date.now()).getTime()) / 1000 > activeRoom.actionSeconds) return NextResponse.json({ error: 'Your turn expired.' }, { status: 400 })
     const previousAction = player.nightAction as any
-    const canAddSoloWolfPeek = player.startingRole === 'Werewolf' && previousAction?.peek?.some((message: string) => message.includes('only Werewolf')) && previousAction.center === undefined && body.center !== undefined
-    if (previousAction && !canAddSoloWolfPeek) return NextResponse.json({ error: 'Your action is already recorded.' }, { status: 400 })
+    const isDoppelFollowUp = player.startingRole === 'Doppelgänger' && previousAction?.copiedRole && previousAction.completed === false
+    const actingRole = isDoppelFollowUp ? previousAction.copiedRole as string : player.startingRole!
+    const canAddSoloWolfPeek = actingRole === 'Werewolf' && previousAction?.peek?.some((message: string) => message.includes('only Werewolf')) && previousAction.center === undefined && body.center !== undefined
+    if (previousAction && !isDoppelFollowUp && !canAddSoloWolfPeek) return NextResponse.json({ error: 'Your action is already recorded.' }, { status: 400 })
     const players = await getPlayers(room.id)
     const centers = centerCards(activeRoom)
     const target = players.find((p) => p.id === body.target)
     const target2 = players.find((p) => p.id === body.target2)
-    let result: any = { type: player.startingRole, target: body.target, target2: body.target2, center: body.center }
+    let result: any = isDoppelFollowUp
+      ? { ...previousAction, completed: true, copiedAction: { type: actingRole, target: body.target, target2: body.target2, center: body.center, center2: body.center2 } }
+      : { type: actingRole, target: body.target, target2: body.target2, center: body.center }
     let actionSaved = false
 
-    if (AUTO_REVEAL_ROLES.includes(player.startingRole!)) {
-      result = { ...result, ...autoNightResult(player.startingRole!, player, players, centers, body.center) }
+    if (AUTO_REVEAL_ROLES.includes(actingRole)) {
+      const automatic = autoNightResult(actingRole, player, players, centers, body.center)
+      result = { ...result, ...automatic, peek: [...(previousAction?.peek || []), ...(automatic?.peek || [])] }
     }
-    if (player.startingRole === 'Seer') {
-      if (body.mode === 'player' && target) result.peek = [`Player ${target.seat}'s card: ${target.role}`]
-      else if (body.mode === 'center' && body.center !== undefined && body.center2 !== undefined) result.peek = [`Center ${Number(body.center) + 1}: ${centers[Number(body.center)]}`, `Center ${Number(body.center2) + 1}: ${centers[Number(body.center2)]}`]
+    if (actingRole === 'Seer') {
+      if (body.mode === 'player' && target) result.peek = [...(previousAction?.peek || []), `${target.name}'s card: ${target.role}`]
+      else if (body.mode === 'center' && body.center !== undefined && body.center2 !== undefined) result.peek = [...(previousAction?.peek || []), `Center ${Number(body.center) + 1}: ${centers[Number(body.center)]}`, `Center ${Number(body.center2) + 1}: ${centers[Number(body.center2)]}`]
       else return NextResponse.json({ error: 'Choose one player or two center cards.' }, { status: 400 })
     }
-    if (player.startingRole === 'Robber') {
+    if (actingRole === 'Robber') {
       if (!target || target.id === player.id) return NextResponse.json({ error: 'Choose another player.' }, { status: 400 })
       const myOldRole = player.role
-      result.peek = [`Your new role: ${target.role}`]
+      result.peek = [...(previousAction?.peek || []), `Your new role: ${target.role}`]
       actionSaved = await db.transaction(async (tx) => {
-        const claimed = await tx.update(werewolfPlayers).set({ role: target.role, nightAction: result }).where(and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
+        const claimed = await tx.update(werewolfPlayers).set({ role: target.role, nightAction: result }).where(isDoppelFollowUp ? eq(werewolfPlayers.id, player.id) : and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
         if (!claimed.length) return false
         await tx.update(werewolfPlayers).set({ role: myOldRole }).where(eq(werewolfPlayers.id, target.id))
         return true
       })
     }
-    if (player.startingRole === 'Troublemaker') {
+    if (actingRole === 'Troublemaker') {
       if (!target || !target2 || target.id === target2.id || target.id === player.id || target2.id === player.id) return NextResponse.json({ error: 'Choose two other players.' }, { status: 400 })
-      result.peek = [`Swapped Player ${target.seat} and Player ${target2.seat}. You did not see either card.`]
+      result.peek = [...(previousAction?.peek || []), `Swapped ${target.name} and ${target2.name}. You did not see either card.`]
       actionSaved = await db.transaction(async (tx) => {
-        const claimed = await tx.update(werewolfPlayers).set({ nightAction: result }).where(and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
+        const claimed = await tx.update(werewolfPlayers).set({ nightAction: result }).where(isDoppelFollowUp ? eq(werewolfPlayers.id, player.id) : and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
         if (!claimed.length) return false
         await tx.update(werewolfPlayers).set({ role: target2.role }).where(eq(werewolfPlayers.id, target.id))
         await tx.update(werewolfPlayers).set({ role: target.role }).where(eq(werewolfPlayers.id, target2.id))
         return true
       })
     }
-    if (player.startingRole === 'Drunk') {
+    if (actingRole === 'Drunk') {
       if (body.center === undefined || body.center === '') return NextResponse.json({ error: 'Choose a center card.' }, { status: 400 })
       const c = centers[Number(body.center)]
       centers[Number(body.center)] = player.role!
-      result.peek = ['Your card was swapped with the center. You do not know your new role.']
+      result.peek = [...(previousAction?.peek || []), 'Your card was swapped with the center. You do not know your new role.']
       actionSaved = await db.transaction(async (tx) => {
-        const claimed = await tx.update(werewolfPlayers).set({ role: c, nightAction: result }).where(and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
+        const claimed = await tx.update(werewolfPlayers).set({ role: c, nightAction: result }).where(isDoppelFollowUp ? eq(werewolfPlayers.id, player.id) : and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
         if (!claimed.length) return false
         await tx.update(werewolfRooms).set({ centerRoles: centers }).where(eq(werewolfRooms.id, room.id))
         return true
       })
     }
-    if (player.startingRole === 'Doppelgänger') {
+    if (actingRole === 'Doppelgänger' && !isDoppelFollowUp) {
       if (!target) return NextResponse.json({ error: 'Choose a player to copy.' }, { status: 400 })
       const copied = target.role
-      result.peek = [`You copied Player ${target.seat}: ${copied}`]
+      result.peek = [`You copied ${target.name}: ${copied}`]
       result.copiedRole = copied
-      // If the copied role is one of the identity-reveal roles, resolve that reveal right now —
-      // it's the Doppelgänger's only chance, since they never get a second turn later.
+      const copiedNeedsChoice = ['Seer', 'Robber', 'Troublemaker', 'Drunk'].includes(copied!)
       if (AUTO_REVEAL_ROLES.includes(copied!) && copied !== 'Insomniac') {
         const packResult = autoNightResult(copied!, player, players, centers)
         if (packResult?.peek) result.peek = [...result.peek, ...packResult.peek]
       }
+      if (copied === 'Insomniac') result.peek.push(`Your final card is: ${copied}`)
+      result.completed = !copiedNeedsChoice && !(copied === 'Werewolf' && result.peek.some((message: string) => message.includes('only Werewolf')))
       const claimed = await db.update(werewolfPlayers).set({ role: copied, nightAction: result }).where(and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
       actionSaved = Boolean(claimed.length)
     }
 
     if (!actionSaved) {
-      const claimed = await db.update(werewolfPlayers).set({ nightAction: result }).where(canAddSoloWolfPeek ? eq(werewolfPlayers.id, player.id) : and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
+      const claimed = await db.update(werewolfPlayers).set({ nightAction: result }).where(isDoppelFollowUp || canAddSoloWolfPeek ? eq(werewolfPlayers.id, player.id) : and(eq(werewolfPlayers.id, player.id), isNull(werewolfPlayers.nightAction))).returning({ id: werewolfPlayers.id })
       if (!claimed.length) return NextResponse.json({ error: 'Your action is already recorded.' }, { status: 400 })
     }
     return NextResponse.json({ ok: true })

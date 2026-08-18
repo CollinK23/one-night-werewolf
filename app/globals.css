@@ -108,7 +108,8 @@ button { cursor: pointer; }
   white-space: nowrap;
 }
 
-.table-status strong { margin-left: auto; color: #ef5d78; font-size: .65rem; }
+.phase-progress { width: clamp(70px, 12vw, 140px); height: 5px; overflow: hidden; border-radius: 999px; background: rgba(166,184,214,.16); box-shadow: inset 0 1px 2px rgba(0,0,0,.45); }
+.phase-progress > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ef5d78, #ff9aad); box-shadow: 0 0 8px rgba(239,93,120,.55); transition: width 1.5s linear; }
 .status-light { width: 6px; height: 6px; border-radius: 50%; background: #7898c9; box-shadow: 0 0 8px #7898c9; }
 .status-light.is-night { background: #ef5d78; box-shadow: 0 0 8px #ef5d78; }
 
@@ -144,7 +145,7 @@ button { cursor: pointer; }
 
 .center-card:nth-child(1) { rotate: -5deg; }
 .center-card:nth-child(3) { rotate: 5deg; }
-.center-card.is-revealed { overflow: hidden; border-color: #71809a; background: #cbd4e2; color: #111722; }
+.center-card.is-revealed { overflow: hidden; border-color: #ef5d78; background: #090d15; color: #f7dbe1; }
 .center-role-art { width: 100%; flex: 1; background-color: #0b0f18; }
 .center-card.is-revealed span { width: 100%; padding: 3px 1px; overflow: hidden; font-size: 7px; text-align: center; text-overflow: ellipsis; }
 
@@ -182,8 +183,9 @@ button { cursor: pointer; }
   box-shadow: 0 5px 14px rgba(0,0,0,.5), inset 0 0 0 2px #090e18;
 }
 
-.player-card.is-face-up { border-color: #ef5d78; background: #0b0f18; }
+.player-card.is-face-up { padding: 2px; border-color: #ef5d78; background: linear-gradient(145deg, #ef5d78, #5b2231); box-shadow: 0 0 0 1px #080b12, 0 7px 18px rgba(0,0,0,.58), 0 0 14px rgba(239,93,120,.2); }
 .player-role-art { width: 100%; height: 100%; background-color: #0b0f18; }
+.role-art { background-color: #0b0f18; background-repeat: no-repeat; image-rendering: auto; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), inset 0 -12px 18px rgba(0,0,0,.3); }
 
 .seat-label {
   display: flex;
@@ -239,6 +241,8 @@ button { cursor: pointer; }
 .table-action-dock button { min-height: 42px; flex: none; padding: 0 1rem; border: 0; background: #ef5d78; color: #16070b; font-family: Consolas, monospace; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .table-action-dock button:disabled { cursor: default; opacity: .35; }
 .table-action-dock.is-complete { border-color: rgba(166,184,214,.14); }
+.spectator-narration { justify-content: flex-start; }
+.spectator-narration > svg { flex: none; color: #ef5d78; }
 
 @keyframes target-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239,93,120,.1); }
