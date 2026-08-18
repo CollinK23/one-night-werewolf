@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowRight, Copy, Moon, RotateCcw, Shield, Sparkles, Users, Vote, Wand2 } from 'lucide-react'
+import { ArrowRight, Copy, Crown, Moon, RotateCcw, Shield, Sparkles, Users, Wand2 } from 'lucide-react'
 
 type Player = {
   id: string
@@ -74,6 +74,7 @@ export default function Page() {
   const [selected, setSelected] = useState('')
   const [selected2, setSelected2] = useState('')
   const [center, setCenter] = useState('')
+  const [selectedCenters, setSelectedCenters] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
 
   const enter = useCallback(
@@ -104,6 +105,13 @@ export default function Page() {
     }
   }, [mode, codeInput, token])
 
+  useEffect(() => {
+    setSelected('')
+    setSelected2('')
+    setCenter('')
+    setSelectedCenters([])
+  }, [room?.phase, room?.activeRole])
+
   const act = async (action: string, extra: Record<string, string | undefined> = {}) => {
     setError('')
     const r = await fetch('/api/rooms', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: codeInput, token, action, ...extra }) })
@@ -116,6 +124,7 @@ export default function Page() {
       setSelected('')
       setSelected2('')
       setCenter('')
+      setSelectedCenters([])
     }
   }
 
@@ -210,11 +219,54 @@ export default function Page() {
         )}
 
         {mode === 'room' && room && (
-          <section className="py-10">
-            <div className="flex flex-col justify-between gap-6 border-b border-border pb-8 sm:flex-row sm:items-end">
+          <section className="py-5 md:py-8">
+            <div className="mb-5 flex items-center justify-between gap-4">
               <div>
+                <div className="font-mono text-[10px] uppercase tracking-[.3em] text-accent">Private table</div>
+                <h2 className="mt-1 font-serif text-2xl md:text-3xl">Miller's Hollow</h2>
+              </div>
+              <button onClick={copy} className="flex h-11 items-center gap-3 rounded-md border border-accent/50 bg-accent/10 px-4 font-mono text-sm tracking-[.25em] text-accent">
+                {codeInput}
+                <Copy size={14} />
+                <span className="hidden text-[9px] tracking-normal text-muted-foreground sm:inline">{copied ? 'COPIED' : 'INVITE'}</span>
+              </button>
+            </div>
+
+            <GameTable
+              room={room}
+              role={role}
+              info={info}
+              selected={selected}
+              selected2={selected2}
+              selectedCenters={selectedCenters}
+              center={center}
+              onAction={(action, extra) => act(action, extra)}
+              onPlayerPick={(id) => {
+                if (room.phase === 'vote') return setSelected(selected === id ? '' : id)
+                if (role === 'Seer') setSelectedCenters([])
+                if (role === 'Troublemaker') {
+                  if (selected === id) setSelected('')
+                  else if (selected2 === id) setSelected2('')
+                  else if (!selected) setSelected(id)
+                  else setSelected2(id)
+                  return
+                }
+                setSelected(selected === id ? '' : id)
+              }}
+              onCenterPick={(index) => {
+                if (role === 'Seer') {
+                  setSelected('')
+                  setSelectedCenters((current) => current.includes(index) ? current.filter((value) => value !== index) : current.length < 2 ? [...current, index] : current)
+                  return
+                }
+                setCenter(center === index ? '' : index)
+              }}
+            />
+
+            <div className="game-console">
+              <div className="mb-7 border-b border-border pb-6">
                 <div className="font-mono text-xs uppercase tracking-[.3em] text-accent">{room.phase === 'lobby' ? 'Waiting room' : room.phase.toUpperCase()}</div>
-                <h2 className="mt-3 font-serif text-5xl">
+                <h2 className="mt-2 font-serif text-4xl md:text-5xl">
                   {room.phase === 'lobby'
                     ? 'Gather your pack.'
                     : room.phase === 'reveal'
@@ -228,12 +280,6 @@ export default function Page() {
                             : 'The truth comes out.'}
                 </h2>
               </div>
-              <button onClick={copy} className="flex h-14 items-center gap-4 border border-accent/50 bg-accent/10 px-5 font-mono text-sm tracking-[.3em] text-accent">
-                {codeInput}
-                <Copy size={15} />
-                <span className="text-[10px] tracking-normal text-muted-foreground">{copied ? 'COPIED' : 'COPY'}</span>
-              </button>
-            </div>
 
             {room.phase === 'lobby' && (
               <Lobby
@@ -252,27 +298,235 @@ export default function Page() {
                   activeRole={room.activeRole || ''}
                   remaining={room.remainingSeconds || 0}
                   info={info}
-                  players={room.players}
-                  selected={selected}
-                  selected2={selected2}
-                  center={center}
-                  setSelected={setSelected}
-                  setSelected2={setSelected2}
-                  setCenter={setCenter}
                   acted={Boolean(me?.hasActed)}
                   peek={room.me?.nightAction?.peek || []}
-                  onAction={(x) => act('night', x)}
                 />
               </>
             )}
             {room.phase === 'discussion' && <Discussion room={room} isHost={Boolean(me?.isHost)} onAdvance={() => act('advance')} />}
-            {room.phase === 'vote' && <VotePanel room={room} selected={selected} setSelected={setSelected} acted={Boolean(me?.hasVoted)} onVote={() => act('vote', { target: selected })} />}
             {room.phase === 'results' && <Results room={room} isHost={Boolean(me?.isHost)} onRestart={() => act('restart')} />}
             {error && <p className="mt-6 text-sm text-destructive">{error}</p>}
+            </div>
           </section>
         )}
       </div>
     </main>
+  )
+}
+
+function GameTable({ room, role, info, selected, selected2, selectedCenters, center, onPlayerPick, onCenterPick, onAction }: {
+  room: Room
+  role: string
+  info: { title: string; text: string }
+  selected: string
+  selected2: string
+  selectedCenters: string[]
+  center: string
+  onPlayerPick: (id: string) => void
+  onCenterPick: (index: string) => void
+  onAction: (action: string, extra?: Record<string, string | undefined>) => void
+}) {
+  const orderedPlayers = [...room.players].sort((a, b) => Number(Boolean(b.isMe)) - Number(Boolean(a.isMe)))
+  const isResults = room.phase === 'results'
+  const isMyNightTurn = room.phase === 'night' && room.activeRole === role
+  const nightPrompt: Record<string, string> = {
+    Seer: 'Pick a seat or 2 cards',
+    Robber: 'Pick a seat to rob',
+    Troublemaker: 'Pick 2 seats to swap',
+    Drunk: 'Pick a center card',
+    Werewolf: 'The pack is awake',
+    Doppelgänger: 'Pick a seat to copy',
+  }
+  const status = room.phase === 'lobby'
+    ? `${room.players.length} seated`
+    : room.phase === 'night'
+      ? isMyNightTurn && nightPrompt[role] ? nightPrompt[role] : `${room.activeRole || 'Village'} wakes`
+      : room.phase === 'discussion'
+        ? 'Table talk'
+        : room.phase === 'vote'
+          ? 'Final vote'
+          : room.phase === 'results'
+            ? 'Cards revealed'
+            : 'Cards dealt'
+  const me = room.players.find((player) => player.isMe)
+  const isSoloWerewolf = room.me?.nightAction?.peek?.some((message) => message.includes('only Werewolf'))
+  const playerTargetingRoles = ['Seer', 'Robber', 'Troublemaker', 'Doppelgänger']
+  const canAct = !me?.hasActed || role === 'Werewolf'
+  const canPickPlayers = (room.phase === 'vote' && !me?.hasVoted) || (isMyNightTurn && canAct && playerTargetingRoles.includes(role))
+  const canPickCenters = isMyNightTurn && canAct && (role === 'Drunk' || role === 'Seer' || (role === 'Werewolf' && Boolean(isSoloWerewolf)))
+
+  return (
+    <div className="table-room" aria-label="Game table">
+      <div className="game-table">
+        <div className="table-felt">
+          <div className="table-mark">
+            <Moon size={14} />
+            <span>One Night</span>
+          </div>
+          <div className="table-status">
+            <span className={`status-light ${room.phase === 'night' ? 'is-night' : ''}`} />
+            {status}
+            {room.phase === 'night' && <strong>00:{String(room.remainingSeconds || 0).padStart(2, '0')}</strong>}
+          </div>
+
+          <div className="center-cards" aria-label="Center cards">
+            {[0, 1, 2].map((index) => (
+              <button
+                type="button"
+                className={`center-card ${isResults ? 'is-revealed' : ''} ${canPickCenters ? 'is-pickable' : ''} ${center === String(index) || selectedCenters.includes(String(index)) ? 'is-selected' : ''}`}
+                disabled={!canPickCenters}
+                onClick={() => onCenterPick(String(index))}
+                aria-label={`Center card ${index + 1}`}
+                key={index}
+              >
+                {isResults ? (
+                  <>
+                    <RoleIcon role={room.centerRoles[index] || 'Villager'} className="center-role-art" />
+                    <span>{room.centerRoles[index]}</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon size={17} />
+                    <span>{index + 1}</span>
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {orderedPlayers.map((player, index) => {
+            const angle = Math.PI / 2 + (index * Math.PI * 2) / orderedPlayers.length
+            const position = {
+              left: `${50 + Math.cos(angle) * 44}%`,
+              top: `${50 + Math.sin(angle) * 40}%`,
+            }
+            const eliminated = room.eliminatedIds?.includes(player.id)
+            return (
+              <button
+                type="button"
+                className={`table-seat ${player.isMe ? 'is-me' : ''} ${eliminated ? 'is-eliminated' : ''} ${canPickPlayers && !player.isMe ? 'is-pickable' : ''} ${selected === player.id || selected2 === player.id ? 'is-selected' : ''}`}
+                style={position}
+                disabled={!canPickPlayers || Boolean(player.isMe)}
+                onClick={() => onPlayerPick(player.id)}
+                aria-label={`Select ${player.name}, seat ${player.seat}`}
+                key={player.id}
+              >
+                <div className={`player-card ${isResults || (player.isMe && room.phase !== 'lobby') ? 'is-face-up' : 'is-face-down'}`}>
+                  {isResults || (player.isMe && room.phase !== 'lobby') ? (
+                    <RoleIcon role={(isResults ? player.role : role) || 'Villager'} className="player-role-art" />
+                  ) : (
+                    <Moon size={18} />
+                  )}
+                </div>
+                <div className="seat-label">
+                  <span>{player.name}</span>
+                  <small>
+                    {player.isHost && <Crown size={10} />}
+                    {player.isMe ? 'You' : `Seat ${player.seat}`}
+                  </small>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <BoardActionDock
+        room={room}
+        role={role}
+        info={info}
+        selected={selected}
+        selected2={selected2}
+        selectedCenters={selectedCenters}
+        center={center}
+        onAction={onAction}
+      />
+    </div>
+  )
+}
+
+function BoardActionDock({ room, role, info, selected, selected2, selectedCenters, center, onAction }: {
+  room: Room
+  role: string
+  info: { title: string; text: string }
+  selected: string
+  selected2: string
+  selectedCenters: string[]
+  center: string
+  onAction: (action: string, extra?: Record<string, string | undefined>) => void
+}) {
+  const me = room.players.find((player) => player.isMe)
+  const active = room.phase === 'night' && room.activeRole === role
+  const peek = room.me?.nightAction?.peek || []
+  const soloWolf = peek.some((message) => message.includes('only Werewolf'))
+  const hasCenterPeek = peek.some((message) => message.includes('Center card:'))
+
+  if (room.phase === 'vote') {
+    const target = room.players.find((player) => player.id === selected)
+    return (
+      <div className="table-action-dock">
+        <div><strong>Final vote</strong><span>Select a player card, then lock your vote.</span></div>
+        <button disabled={Boolean(me?.hasVoted) || !selected} onClick={() => onAction('vote', { target: selected })}>
+          {me?.hasVoted ? 'Vote locked' : target ? `Vote for ${target.name}` : 'Select a player'}
+        </button>
+      </div>
+    )
+  }
+
+  if (!active) return null
+  if (me?.hasActed && !(role === 'Werewolf' && soloWolf && !hasCenterPeek)) {
+    return <div className="table-action-dock is-complete"><div><strong>Action recorded</strong><span>Your private information is below the table.</span></div></div>
+  }
+
+  let instruction = info.text
+  let label = ''
+  let disabled = true
+  let submit: Record<string, string | undefined> = {}
+
+  if (role === 'Seer') {
+    instruction = 'Select one player card or exactly two center cards.'
+    if (selected) {
+      label = 'Reveal player card'
+      disabled = false
+      submit = { mode: 'player', target: selected }
+    } else {
+      label = selectedCenters.length === 2 ? 'Reveal center cards' : `Select 2 center cards (${selectedCenters.length}/2)`
+      disabled = selectedCenters.length !== 2
+      submit = { mode: 'center', center: selectedCenters[0], center2: selectedCenters[1] }
+    }
+  } else if (role === 'Robber') {
+    instruction = 'Select another player card to swap with.'
+    label = 'Swap cards'
+    disabled = !selected
+    submit = { target: selected }
+  } else if (role === 'Doppelgänger') {
+    instruction = 'Select another player card to copy.'
+    label = 'Copy role'
+    disabled = !selected
+    submit = { target: selected }
+  } else if (role === 'Troublemaker') {
+    instruction = 'Select two player cards to swap.'
+    label = selected2 ? 'Swap selected cards' : selected ? 'Select one more player' : 'Select two players'
+    disabled = !selected || !selected2
+    submit = { target: selected, target2: selected2 }
+  } else if (role === 'Drunk') {
+    instruction = 'Select one center card to swap with.'
+    label = 'Swap with center'
+    disabled = !center
+    submit = { center }
+  } else if (role === 'Werewolf' && soloWolf && !hasCenterPeek) {
+    instruction = 'You are the only Werewolf. You may inspect one center card.'
+    label = 'Peek at center card'
+    disabled = !center
+    submit = { center }
+  } else {
+    return <div className="table-action-dock is-complete"><div><strong>{info.title} wakes</strong><span>Your information is shown below the table.</span></div></div>
+  }
+
+  return (
+    <div className="table-action-dock">
+      <div><strong>{info.title} action</strong><span>{instruction}</span></div>
+      <button disabled={disabled} onClick={() => onAction('night', submit)}>{label}</button>
+    </div>
   )
 }
 
@@ -294,7 +548,7 @@ function buildPool(wolves: number, villagers: number, masons: boolean, single: R
   return pool
 }
 
-function RoleSelector({ roles, onRoles }: { roles: string[]; onRoles: (roles: string[]) => void }) {
+function RoleSelector({ roles, required, onRoles }: { roles: string[]; required: number; onRoles: (roles: string[]) => void }) {
   const initial = poolCounts(roles)
   const [wolves, setWolves] = useState(initial.wolves)
   const [villagers, setVillagers] = useState(initial.villagers)
@@ -319,7 +573,7 @@ function RoleSelector({ roles, onRoles }: { roles: string[]; onRoles: (roles: st
     <div className="mt-8 border border-border bg-card p-5">
       <div className="mb-4 flex items-center justify-between font-mono text-xs uppercase tracking-widest text-muted-foreground">
         <span>Roles in play</span>
-        <span className="text-accent">{total} cards selected</span>
+        <span className={total === required ? 'text-accent' : 'text-destructive'}>{total} / {required} cards</span>
       </div>
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <div className="flex items-center justify-between border border-border p-3">
@@ -362,13 +616,16 @@ function RoleSelector({ roles, onRoles }: { roles: string[]; onRoles: (roles: st
           </button>
         ))}
       </div>
-      <p className="mt-4 text-xs text-muted-foreground">If there are more players than selected roles, extra Villagers are added automatically to fill the deck.</p>
+      <p className="mt-4 text-xs text-muted-foreground">One Night uses one card per player plus exactly three center cards.</p>
     </div>
   )
 }
 
 function Lobby({ room, onStart, onSettings, onRoles, error }: { room: Room; onStart: () => void; onSettings: (seconds: number) => void; onRoles: (roles: string[]) => void; error: string }) {
   const me = room.players.find((p) => p.isMe)
+  const requiredCards = room.players.length + 3
+  const selectedCards = room.enabledRoles?.length || 0
+  const deckReady = selectedCards === requiredCards
   return (
     <div className="py-10">
       <div className="mb-5 flex items-center justify-between">
@@ -395,12 +652,12 @@ function Lobby({ room, onStart, onSettings, onRoles, error }: { room: Room; onSt
           <span className="text-xs text-muted-foreground">10–120 seconds</span>
         </div>
       )}
-      {me?.isHost && <RoleSelector roles={room.enabledRoles || []} onRoles={onRoles} />}
+      {me?.isHost && <RoleSelector roles={room.enabledRoles || []} required={requiredCards} onRoles={onRoles} />}
       {!me?.isHost && (
         <div className="mt-8 border border-border bg-card p-4 text-sm text-muted-foreground">The host is choosing which roles are in play.</div>
       )}
       {me?.isHost && (
-        <button onClick={onStart} disabled={room.players.length < 3} className="mt-8 flex h-14 items-center gap-3 bg-accent px-7 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
+        <button onClick={onStart} disabled={room.players.length < 3 || !deckReady} className="mt-8 flex h-14 items-center gap-3 bg-accent px-7 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
           <Wand2 size={16} /> Deal the cards
         </button>
       )}
@@ -433,30 +690,6 @@ function Reveal({ role, info, isHost, remaining, onAdvance }: { role: string; in
   )
 }
 
-function PlayerGrid({ players, value, onPick, exclude }: { players: Player[]; value: string; onPick: (id: string) => void; exclude?: string[] }) {
-  return (
-    <div className="mt-5 grid gap-2 sm:grid-cols-2">
-      {players
-        .filter((p) => !p.isMe && !exclude?.includes(p.id))
-        .map((p) => (
-          <button key={p.id} onClick={() => onPick(p.id)} className={`border p-4 text-left ${value === p.id ? 'border-accent bg-accent/10' : 'border-border bg-card'}`}>
-            Player {p.seat}
-          </button>
-        ))}
-    </div>
-  )
-}
-function CenterGrid({ value, onPick }: { value: string[]; onPick: (i: string) => void }) {
-  return (
-    <div className="mt-5 grid grid-cols-3 gap-2">
-      {[0, 1, 2].map((i) => (
-        <button key={i} onClick={() => onPick(String(i))} className={`border p-4 ${value.includes(String(i)) ? 'border-accent bg-accent/10' : 'border-border bg-card'}`}>
-          Center {i + 1}
-        </button>
-      ))}
-    </div>
-  )
-}
 function PeekPanel({ peek }: { peek: string[] }) {
   if (!peek.length) return null
   return (
@@ -477,37 +710,17 @@ function NightFixed({
   activeRole,
   remaining,
   info,
-  players,
-  selected,
-  selected2,
-  center,
-  setSelected,
-  setSelected2,
-  setCenter,
   acted,
   peek,
-  onAction,
 }: {
   role: string
   activeRole: string
   remaining: number
   info: { title: string; text: string }
-  players: Player[]
-  selected: string
-  selected2: string
-  center: string
-  setSelected: (v: string) => void
-  setSelected2: (v: string) => void
-  setCenter: (v: string) => void
   acted: boolean
   peek: string[]
-  onAction: (v: Record<string, string | undefined>) => void
 }) {
-  const [seerMode, setSeerMode] = useState<'player' | 'center'>('player')
-  const [seerCenters, setSeerCenters] = useState<string[]>([])
   const active = activeRole === role
-  const soloWolf = peek.some((p) => p.includes('only Werewolf'))
-  const hasCenterPeek = peek.some((p) => p.includes('Center card:'))
 
   const OriginalRoleBadge = (
     <div className="mb-5 inline-flex items-center gap-2 border border-border bg-card px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -528,10 +741,6 @@ function NightFixed({
     )
   }
 
-  const toggleSeerCenter = (i: string) => {
-    setSeerCenters((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : prev.length < 2 ? [...prev, i] : prev))
-  }
-
   return (
     <div className="py-12">
       <div>{OriginalRoleBadge}</div>
@@ -548,115 +757,7 @@ function NightFixed({
         <p className="mt-6 text-sm text-muted-foreground">This information was revealed to you automatically the moment your turn started.</p>
       )}
 
-      {role === 'Werewolf' && soloWolf && !hasCenterPeek && (
-        <div className="mt-8">
-          <p className="mb-2 text-sm text-muted-foreground">You are the only Werewolf. You may optionally peek at one center card before finishing.</p>
-          <CenterGrid value={center ? [center] : []} onPick={(i) => setCenter(center === i ? '' : i)} />
-          <button onClick={() => onAction({ center })} disabled={!center} className="mt-4 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
-            Peek this center card
-          </button>
-        </div>
-      )}
-
-      {!acted && (
-        <div className="mt-8">
-          {role === 'Seer' && (
-            <div>
-              <div className="mb-5 flex gap-3">
-                <button
-                  onClick={() => {
-                    setSeerMode('player')
-                    setSeerCenters([])
-                  }}
-                  className={`border px-4 py-3 font-mono text-xs uppercase tracking-widest ${seerMode === 'player' ? 'border-accent bg-accent/10 text-accent' : 'border-border text-muted-foreground'}`}
-                >
-                  Look at a player
-                </button>
-                <button
-                  onClick={() => {
-                    setSeerMode('center')
-                    setSelected('')
-                  }}
-                  className={`border px-4 py-3 font-mono text-xs uppercase tracking-widest ${seerMode === 'center' ? 'border-accent bg-accent/10 text-accent' : 'border-border text-muted-foreground'}`}
-                >
-                  Look at two center cards
-                </button>
-              </div>
-              {seerMode === 'player' ? (
-                <>
-                  <p className="text-sm text-muted-foreground">Choose one player below.</p>
-                  <PlayerGrid players={players} value={selected} onPick={setSelected} />
-                  <button
-                    onClick={() => onAction({ mode: 'player', target: selected })}
-                    disabled={!selected}
-                    className="mt-6 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35"
-                  >
-                    Reveal their card
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">Choose exactly two center cards ({seerCenters.length}/2 selected).</p>
-                  <CenterGrid value={seerCenters} onPick={toggleSeerCenter} />
-                  <button
-                    onClick={() => onAction({ mode: 'center', center: seerCenters[0], center2: seerCenters[1] })}
-                    disabled={seerCenters.length !== 2}
-                    className="mt-6 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35"
-                  >
-                    Reveal these cards
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
-          {role === 'Robber' && (
-            <div>
-              <p className="text-sm text-muted-foreground">Choose a player to swap cards with.</p>
-              <PlayerGrid players={players} value={selected} onPick={setSelected} />
-              <button onClick={() => onAction({ target: selected })} disabled={!selected} className="mt-6 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
-                Swap with selected player
-              </button>
-            </div>
-          )}
-
-          {role === 'Doppelgänger' && (
-            <div>
-              <p className="text-sm text-muted-foreground">Choose a player to copy.</p>
-              <PlayerGrid players={players} value={selected} onPick={setSelected} />
-              <button onClick={() => onAction({ target: selected })} disabled={!selected} className="mt-6 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
-                Copy selected player
-              </button>
-            </div>
-          )}
-
-          {role === 'Troublemaker' && (
-            <div>
-              <p className="text-sm text-muted-foreground">Choose two other players to swap. Order: {selected ? 'first player chosen' : 'pick first player'}{selected2 ? ', second player chosen' : ''}.</p>
-              <PlayerGrid players={players} value={selected} onPick={(id) => (selected === id ? setSelected('') : selected2 === id ? setSelected2('') : selected ? setSelected2(id) : setSelected(id))} exclude={[]} />
-              <button
-                onClick={() => onAction({ target: selected, target2: selected2 })}
-                disabled={!selected || !selected2}
-                className="mt-6 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35"
-              >
-                Swap these two players
-              </button>
-            </div>
-          )}
-
-          {role === 'Drunk' && (
-            <div>
-              <p className="text-sm text-muted-foreground">Choose a center card to swap with (you will not see the new role).</p>
-              <CenterGrid value={center ? [center] : []} onPick={(i) => setCenter(i)} />
-              <button onClick={() => onAction({ center })} disabled={!center} className="mt-6 bg-accent px-6 py-4 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
-                Swap with center card
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {acted && <p className="mt-6 text-sm text-green-300">Action recorded. Review your private information above, then choose Finish my action.</p>}
+      {acted && <p className="mt-6 text-sm text-accent">Action recorded. Review your private information above while the night continues.</p>}
     </div>
   )
 }
@@ -675,7 +776,7 @@ function Discussion({ room, isHost, onAdvance }: { room: Room; isHost: boolean; 
           {room.players.map((p) => (
             <div key={p.id} className="flex justify-between text-sm">
               <span>Player {p.seat}</span>
-              <span className="text-green-300">ready</span>
+              <span className="text-accent">ready</span>
             </div>
           ))}
         </div>
@@ -685,36 +786,6 @@ function Discussion({ room, isHost, onAdvance }: { room: Room; isHost: boolean; 
           </button>
         )}
       </aside>
-    </div>
-  )
-}
-
-function VotePanel({ room, selected, setSelected, acted, onVote }: { room: Room; selected: string; setSelected: (v: string) => void; acted: boolean; onVote: () => void }) {
-  return (
-    <div className="grid gap-10 py-12 lg:grid-cols-[.8fr_1.2fr]">
-      <div>
-        <div className="mb-5 flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-accent">
-          <Vote size={18} /> Final vote
-        </div>
-        <h3 className="font-serif text-5xl">Point the finger.</h3>
-        <p className="mt-5 leading-7 text-muted-foreground">Everyone votes at the same time. Ties eliminate every tied player. Players are shown by seat number to keep names private during discussion.</p>
-        {acted && <div className="mt-8 border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300">Vote locked. Waiting for the rest of the table.</div>}
-      </div>
-      <div className="border border-border bg-card p-5">
-        <div className="grid gap-2">
-          {room.players
-            .filter((p) => !p.isMe)
-            .map((p) => (
-              <button key={p.id} disabled={acted} onClick={() => setSelected(p.id)} className={`flex justify-between border p-4 text-left ${selected === p.id ? 'border-accent bg-accent/10' : 'border-border'}`}>
-                <span>Player {p.seat}</span>
-                <span className="font-mono text-xs text-muted-foreground">seat {p.seat}</span>
-              </button>
-            ))}
-        </div>
-        <button disabled={acted || !selected} onClick={onVote} className="mt-4 h-12 w-full bg-accent font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground disabled:opacity-35">
-          Lock vote
-        </button>
-      </div>
     </div>
   )
 }
