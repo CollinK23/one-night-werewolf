@@ -2,32 +2,54 @@
 @import 'tw-animate-css';
 
 @theme inline {
-  --color-background: #070a10;
-  --color-foreground: #edf1f7;
-  --color-border: rgba(166, 184, 214, 0.14);
-  --color-card: #101622;
-  --color-accent: #ef5d78;
-  --color-accent-foreground: #16070b;
-  --color-muted-foreground: #929bad;
-  --color-destructive: #f05262;
+  --color-background: #080711;
+  --color-foreground: #f3f0fa;
+  --color-border: rgba(196, 177, 235, 0.18);
+  --color-card: #121021;
+  --color-accent: #b58aff;
+  --color-accent-foreground: #100b1d;
+  --color-muted-foreground: #aaa6bd;
+  --color-destructive: #e87589;
+  --font-sans: Arial, Helvetica, sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
   --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 }
 
 :root { color-scheme: dark; }
 * { box-sizing: border-box; }
-html { background: #070a10; }
+html { background: #080711; }
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 50% -10%, rgba(40, 60, 94, .24), transparent 34rem),
-    #070a10;
-  color: #edf1f7;
+  background: #080711;
+  color: #f3f0fa;
   font-family: Arial, Helvetica, sans-serif;
 }
 button, input { font: inherit; }
 button { cursor: pointer; }
-::selection { background: #ef5d78; color: #16070b; }
+::selection { background: #b58aff; color: #100b1d; }
+
+.night-home {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(90deg, #05040c 0%, #06050f 43%, rgba(14, 10, 30, .54) 68%, rgba(8, 7, 17, .08) 100%), url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_2994-SSvY9sX73Byzwdw2NHb4i0SXJ8JXOZ.png') center / cover no-repeat;
+}
+.night-home::after { position: absolute; inset: 0; content: ''; pointer-events: none; background: linear-gradient(180deg, rgba(4, 3, 10, .18), transparent 30%, rgba(4, 3, 10, .35)); }
+.night-home-content { position: relative; z-index: 1; display: flex; min-height: 100vh; max-width: 760px; flex-direction: column; padding: 2rem clamp(1.5rem, 6vw, 5rem) 4rem; }
+.night-brand { display: flex; align-items: center; gap: .8rem; color: #eeeaf6; font-family: var(--font-mono); font-size: .78rem; letter-spacing: .3em; }
+.night-brand-mark { display: grid; size: 2.75rem; place-items: center; border: 1px solid #806342; border-radius: 999px; color: #d7b778; font-size: 1.1rem; letter-spacing: 0; }
+.night-hero-copy { margin-top: auto; margin-bottom: 8vh; }
+.night-kicker { color: #b58aff; font-family: var(--font-mono); font-size: clamp(.7rem, 1.3vw, .95rem); font-weight: 600; letter-spacing: .25em; text-transform: uppercase; }
+.night-title { margin-top: 1.25rem; color: #eeeef2; font-family: var(--font-serif); font-size: clamp(4.4rem, 10vw, 8.5rem); font-weight: 700; letter-spacing: -.065em; line-height: .77; text-transform: uppercase; text-shadow: 0 3px 0 #8d8d99, 0 10px 24px rgba(0,0,0,.35); }
+.night-title span { display: block; margin-left: -.05em; color: #bca0f1; font-size: 1.05em; letter-spacing: -.08em; text-shadow: 0 3px 0 #725c99, 0 0 22px rgba(139, 93, 211, .25); }
+.night-rule { display: flex; align-items: center; gap: .7rem; max-width: 35rem; margin: 2rem 0 1.5rem; color: #8c66c7; }
+.night-rule::before, .night-rule::after { height: 1px; flex: 1; content: ''; background: rgba(181, 138, 255, .22); }
+.night-rule i { display: block; size: .65rem; rotate: 45deg; border: 2px solid #8c66c7; }
+.night-description { max-width: 33rem; color: #b9b3c6; font-size: clamp(1rem, 1.7vw, 1.35rem); line-height: 1.55; }
+.night-start { display: flex; width: min(100%, 35rem); min-height: 4.75rem; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 2.7rem; padding: 0 1.8rem 0 2.6rem; border: 2px solid #8c5be0; background: rgba(24, 17, 43, .78); box-shadow: 0 0 22px rgba(120, 65, 218, .42), inset 0 0 20px rgba(181, 138, 255, .08); color: #eeeaf6; font-family: var(--font-mono); font-size: 1rem; letter-spacing: .25em; text-transform: uppercase; }
+.night-start:hover { border-color: #c4a5ff; background: rgba(43, 27, 71, .9); }
+.night-start svg { color: #eeeaf6; }
+
 
 .table-room {
   position: relative;
