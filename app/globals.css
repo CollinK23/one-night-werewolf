@@ -32,7 +32,7 @@ button { cursor: pointer; }
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  background: linear-gradient(90deg, #05040c 0%, #06050f 43%, rgba(14, 10, 30, .54) 68%, rgba(8, 7, 17, .08) 100%), url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_2994-SSvY9sX73Byzwdw2NHb4i0SXJ8JXOZ.png') center / cover no-repeat;
+  background: linear-gradient(90deg, #05040c 0%, #06050f 43%, rgba(14, 10, 30, .54) 68%, rgba(8, 7, 17, .08) 100%), url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-EPtX7AQuZq8xcDJ2jxqIkEMu08RMh0.png') center / cover no-repeat;
 }
 .night-home::after { position: absolute; inset: 0; content: ''; pointer-events: none; background: linear-gradient(180deg, rgba(4, 3, 10, .18), transparent 30%, rgba(4, 3, 10, .35)); }
 .night-home-content { position: relative; z-index: 1; display: flex; min-height: 100vh; max-width: 760px; flex-direction: column; padding: 2rem clamp(1.5rem, 6vw, 5rem) 4rem; }
