@@ -48,8 +48,10 @@ button { cursor: pointer; }
 .night-rule::before, .night-rule::after { height: 1px; flex: 1; content: ''; background: rgba(181, 138, 255, .22); }
 .night-rule i { display: block; size: .65rem; rotate: 45deg; border: 2px solid #8c66c7; }
 .night-description { max-width: 33rem; color: #b9b3c6; font-size: clamp(1rem, 1.7vw, 1.35rem); line-height: 1.55; }
-.night-start { display: flex; width: min(100%, 35rem); min-height: 4.75rem; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 2.7rem; padding: 0 1.8rem 0 2.6rem; border: 2px solid #8c5be0; background: rgba(24, 17, 43, .78); box-shadow: 0 0 22px rgba(120, 65, 218, .42), inset 0 0 20px rgba(181, 138, 255, .08); color: #eeeaf6; font-family: var(--font-mono); font-size: 1rem; letter-spacing: .25em; text-transform: uppercase; }
-.night-start:hover { border-color: #c4a5ff; background: rgba(43, 27, 71, .9); }
+.night-start { position: relative; display: flex; width: min(100%, 35rem); min-height: 4.75rem; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 2.7rem; padding: 0 1.8rem 0 2.6rem; border: 2px solid #8254d2; background: linear-gradient(180deg, rgba(34, 25, 57, .96), rgba(14, 11, 27, .98)); box-shadow: 0 0 9px rgba(126, 76, 224, .8), 0 0 24px rgba(104, 54, 197, .35), inset 0 1px 0 rgba(225, 207, 255, .26), inset 0 -10px 18px rgba(3, 2, 9, .38); color: #eeeaf6; font-family: var(--font-mono); font-size: 1rem; letter-spacing: .25em; text-transform: uppercase; clip-path: polygon(3% 0, 48% 0, 50% 7%, 52% 0, 97% 0, 100% 12%, 100% 88%, 97% 100%, 52% 100%, 50% 93%, 48% 100%, 3% 100%, 0 88%, 0 12%); }
+.night-start::before { position: absolute; inset: 4px; content: ''; border: 1px solid rgba(177, 134, 255, .34); pointer-events: none; clip-path: inherit; }
+.night-start::after { position: absolute; top: -6px; left: 50%; size: .75rem; content: ''; rotate: 45deg; border: 2px solid #9c6fff; background: #281744; box-shadow: 0 0 8px rgba(151, 99, 255, .95); transform: translateX(-50%); }
+.night-start:hover { border-color: #c4a5ff; background: linear-gradient(180deg, rgba(54, 36, 83, .98), rgba(22, 14, 42, .98)); }
 .night-start svg { color: #eeeaf6; }
 
 
