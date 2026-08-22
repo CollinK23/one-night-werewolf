@@ -152,16 +152,16 @@ export default function Page() {
     <main className={mode === 'home' ? 'night-home' : 'min-h-screen bg-background text-foreground'}>
       {mode === 'home' ? (
         <div className="night-home-content">
-          {/* <header className="night-brand">
+          <header className="night-brand">
             <span className="night-brand-mark"><Moon size={18} /></span>
             <span>ONE NIGHT</span>
-          </header> */}
-          <section className="night-hero-copy">
+          </header>
+          <section className="mx-auto my-8">
             <div className="night-kicker">Digital cards for one night</div>
             <h1 className="night-title">One Night<span>Werewolf</span></h1>
             <div className="night-rule" aria-hidden="true"><i /></div>
             <p className="night-description">Keep the narrator. Replace the physical cards with a fast, private table on everyone&apos;s phone.</p>
-            <div className="mt-6 flex w-full max-w-[35rem] flex-col gap-3 sm:flex-row">
+            <div className="my-6 flex w-full max-w-[25rem] flex-col gap-3 sm:flex-row">
               <label className="sr-only" htmlFor="home-name">Your display name</label>
               <input id="home-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your display name" className="h-12 min-w-0 flex-1 border border-border bg-card/70 px-4 text-foreground outline-none placeholder:text-muted-foreground focus:border-accent" />
             </div>
