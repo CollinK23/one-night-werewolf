@@ -226,6 +226,7 @@ export default function Page() {
               </button>
             </div>
 
+            <div className="board-stage">
             <GameTable
               room={room}
               role={actionRole}
@@ -257,6 +258,7 @@ export default function Page() {
               }}
             />
 
+            </div>
             <div className="game-console">
               <div className="mb-7 border-b border-border pb-6">
                 <div className="font-mono text-xs uppercase tracking-[.3em] text-accent">{room.phase === 'lobby' ? 'Waiting room' : room.phase.toUpperCase()}</div>
@@ -288,7 +290,6 @@ export default function Page() {
                 error={error}
               />
             )}
-            {!room.me?.isSpectator && room.phase === 'reveal' && <Reveal role={role} info={info} isHost={Boolean(me?.isHost)} remaining={room.remainingSeconds || 0} onAdvance={() => act('advance')} />}
             {!room.me?.isSpectator && room.phase === 'night' && (
               <>
                 <NightFixed
@@ -304,6 +305,7 @@ export default function Page() {
             )}
             {!room.me?.isSpectator && room.phase === 'discussion' && <Discussion room={room} isHost={Boolean(me?.isHost)} onAdvance={() => act('advance')} />}
             {!room.me?.isSpectator && room.phase === 'results' && <Results room={room} isHost={Boolean(me?.isHost)} onRestart={() => act('restart')} />}
+            {room.phase === 'reveal' && !room.me?.isSpectator && <Reveal role={role} info={info} isHost={Boolean(me?.isHost)} remaining={room.remainingSeconds || 0} onAdvance={() => act('advance')} />}
             {error && <p className="mt-6 text-sm text-destructive">{error}</p>}
             </div>
           </section>
@@ -703,12 +705,13 @@ function Lobby({ room, onStart, onSettings, onRoles, error }: { room: Room; onSt
 
 function Reveal({ role, info, isHost, remaining, onAdvance }: { role: string; info: { title: string; text: string }; isHost: boolean; remaining: number; onAdvance: () => void }) {
   return (
-    <div className="mx-auto max-w-lg py-12">
+    <div className="reveal-overlay" role="dialog" aria-modal="true" aria-label={`${info.title} revealed`}>
+      <div className="reveal-modal mx-auto max-w-lg">
       <div className="border border-accent/40 bg-card p-6">
         <div className="flex aspect-[.75] flex-col justify-between border border-border p-8 text-center">
           <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Your starting card · keep secret</div>
           <div>
-            <RoleIcon role={role} className="mx-auto mb-6 h-40 w-28 rounded-lg bg-black" />
+            <RoleIcon role={role} className="reveal-role-card mx-auto mb-6 h-64 w-44 rounded-lg bg-black" />
             <h3 className="font-serif text-5xl">{info.title}</h3>
             <p className="mx-auto mt-5 max-w-xs leading-7 text-muted-foreground">{info.text}</p>
           </div>
@@ -721,6 +724,7 @@ function Reveal({ role, info, isHost, remaining, onAdvance }: { role: string; in
           Begin the night now <ArrowRight size={15} />
         </button>
       )}
+      </div>
     </div>
   )
 }

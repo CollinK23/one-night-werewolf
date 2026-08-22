@@ -30,6 +30,10 @@ button, input { font: inherit; }
 button { cursor: pointer; }
 ::selection { background: #b58aff; color: #100b1d; }
 
+.reveal-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1.5rem; background: rgba(3, 2, 10, .78); backdrop-filter: blur(5px); }
+.reveal-modal { width: min(100%, 34rem); max-height: 92vh; overflow: auto; border: 1px solid rgba(215, 183, 120, .5); background: linear-gradient(145deg, #211637, #0b0917 70%); box-shadow: 0 0 0 5px rgba(25, 16, 42, .8), 0 0 38px rgba(142, 88, 230, .55); }
+.reveal-modal .role-art { box-shadow: 0 18px 40px rgba(0,0,0,.55), 0 0 18px rgba(181,138,255,.24); }
+.reveal-role-card { max-width: 100%; }
 .night-home {
   position: relative;
   min-height: 100vh;
