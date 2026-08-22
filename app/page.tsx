@@ -152,10 +152,10 @@ export default function Page() {
     <main className={mode === 'home' ? 'night-home' : 'min-h-screen bg-background text-foreground'}>
       {mode === 'home' ? (
         <div className="night-home-content">
-          <header className="night-brand">
+          {/* <header className="night-brand">
             <span className="night-brand-mark"><Moon size={18} /></span>
             <span>ONE NIGHT</span>
-          </header>
+          </header> */}
           <section className="night-hero-copy">
             <div className="night-kicker">Digital cards for one night</div>
             <h1 className="night-title">One Night<span>Werewolf</span></h1>
@@ -164,16 +164,15 @@ export default function Page() {
             <div className="mt-6 flex w-full max-w-[35rem] flex-col gap-3 sm:flex-row">
               <label className="sr-only" htmlFor="home-name">Your display name</label>
               <input id="home-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your display name" className="h-12 min-w-0 flex-1 border border-border bg-card/70 px-4 text-foreground outline-none placeholder:text-muted-foreground focus:border-accent" />
-              <button onClick={() => name.trim() && setMode('join')} className="h-12 border border-accent bg-accent px-6 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground">Enter the night</button>
             </div>
             <button onClick={() => name.trim() && setMode('join')} className="night-start">
-              <span>Start a game</span><ArrowRight size={27} />
+              <span>Enter the night</span><ArrowRight size={27} />
             </button>
           </section>
         </div>
       ) : (
       <div className="mx-auto min-h-screen max-w-6xl px-5 py-6 md:px-10">
-        <header className="flex items-center justify-between border-b border-border pb-6">
+        <header className="flex items-center justify-center border-b border-border pb-6">
           <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-full border border-accent text-accent"><Moon size={19} /></div><div><div className="font-mono text-[10px] uppercase tracking-[.35em] text-accent">A night of suspicion</div><div className="font-serif text-xl">ONE NIGHT</div></div></div>
           <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><Shield size={14} /> Private rooms. No accounts.</div>
         </header>
