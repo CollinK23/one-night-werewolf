@@ -36,26 +36,20 @@ button { cursor: pointer; }
   overflow: hidden;
   background: linear-gradient(90deg, #05040c 0%, #06050f 43%, rgba(14, 10, 30, .54) 68%, rgba(8, 7, 17, .08) 100%), url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-EPtX7AQuZq8xcDJ2jxqIkEMu08RMh0.png') center / cover no-repeat;
 }
-.night-home::after { position: absolute; inset: 0; content: ''; pointer-events: none; background: linear-gradient(180deg, rgba(4, 3, 10, .2), transparent 30%, rgba(4, 3, 10, .48)), repeating-linear-gradient(112deg, transparent 0 5px, rgba(255, 255, 255, .018) 5px 6px, transparent 6px 13px); mix-blend-mode: screen; opacity: .62; }
+.night-home::after { position: absolute; inset: 0; content: ''; pointer-events: none; background: linear-gradient(180deg, rgba(4, 3, 10, .18), transparent 30%, rgba(4, 3, 10, .35)); }
 .night-home-content { position: relative; z-index: 1; display: flex; min-height: 100vh; max-width: 760px; flex-direction: column; padding: 2rem clamp(1.5rem, 6vw, 5rem) 4rem; }
 .night-brand { display: flex; align-items: center; gap: .8rem; color: #eeeaf6; font-family: var(--font-mono); font-size: .78rem; letter-spacing: .3em; }
 .night-brand-mark { display: grid; size: 2.75rem; place-items: center; border: 1px solid #806342; border-radius: 999px; color: #d7b778; font-size: 1.1rem; letter-spacing: 0; }
 .night-hero-copy { margin-top: auto; margin-bottom: 8vh; }
 .night-kicker { color: #b58aff; font-family: var(--font-mono); font-size: clamp(.7rem, 1.3vw, .95rem); font-weight: 600; letter-spacing: .25em; text-transform: uppercase; }
-.night-title { display: block; font-family: var(--font-serif); font-size: 9vw; line-height: .77; text-transform: uppercase; white-space: nowrap;  }
-.night-title span {
-  display: block;
-  font-size: 1.05em;
-  letter-spacing: -0.09em;
-}
+.night-title { display: block; width: max-content; max-width: 100%; margin-top: 1.25rem; background: linear-gradient(180deg, #fffdf4 0%, #e5dff2 31%, #bca0f1 63%, #624681 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; font-family: var(--font-serif); font-size: clamp(3.8rem, 9vw, 8.5rem); font-weight: 700; letter-spacing: -.075em; line-height: .77; text-transform: uppercase; white-space: nowrap; text-shadow: 0 1px 0 #fff7de, 0 2px 0 #b9b1c7, 0 4px 0 #76648f, 0 7px 0 #342842, 0 12px 22px rgba(0,0,0,.55); filter: drop-shadow(0 0 12px rgba(181, 138, 255, .18)); }
+.night-title span { display: block; margin-left: -.05em; background: linear-gradient(180deg, #f0e7ff 0%, #c4a9f4 30%, #9b76d0 64%, #4e326d 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; font-size: 1.05em; letter-spacing: -.09em; text-shadow: 0 1px 0 #f1e8ff, 0 3px 0 #9a82bc, 0 6px 0 #513b70, 0 10px 0 #281d39, 0 0 22px rgba(139, 93, 211, .3); }
 .night-rule { display: flex; align-items: center; gap: .7rem; max-width: 35rem; margin: 2rem 0 1.5rem; color: #8c66c7; }
 .night-rule::before, .night-rule::after { height: 1px; flex: 1; content: ''; background: rgba(181, 138, 255, .22); }
 .night-rule i { display: block; size: .65rem; rotate: 45deg; border: 2px solid #8c66c7; }
 .night-description { max-width: 33rem; color: #b9b3c6; font-size: clamp(1rem, 1.7vw, 1.35rem); line-height: 1.55; }
-.night-start { position: relative; display: flex; width: min(100%, 35rem); min-height: 4.75rem; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 2.7rem; padding: 0 1.8rem 0 2.6rem; border: 2px solid #8254d2; background: linear-gradient(180deg, rgba(34, 25, 57, .96), rgba(14, 11, 27, .98)); box-shadow: 0 0 9px rgba(126, 76, 224, .8), 0 0 24px rgba(104, 54, 197, .35), inset 0 1px 0 rgba(225, 207, 255, .26), inset 0 -10px 18px rgba(3, 2, 9, .38); color: #eeeaf6; font-family: var(--font-mono); font-size: 1rem; letter-spacing: .25em; text-transform: uppercase; clip-path: polygon(3% 0, 48% 0, 50% 7%, 52% 0, 97% 0, 100% 12%, 100% 88%, 97% 100%, 52% 100%, 50% 93%, 48% 100%, 3% 100%, 0 88%, 0 12%); }
-.night-start::before { position: absolute; inset: 4px; content: ''; border: 1px solid rgba(177, 134, 255, .34); pointer-events: none; clip-path: inherit; }
-.night-start::after { position: absolute; top: -6px; left: 50%; size: .75rem; content: ''; rotate: 45deg; border: 2px solid #9c6fff; background: #281744; box-shadow: 0 0 8px rgba(151, 99, 255, .95); transform: translateX(-50%); }
-.night-start:hover { border-color: #c4a5ff; background: linear-gradient(180deg, rgba(54, 36, 83, .98), rgba(22, 14, 42, .98)); }
+.night-start { display: flex; width: min(100%, 35rem); min-height: 4.75rem; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 2.7rem; padding: 0 1.8rem 0 2.6rem; border: 2px solid #8c5be0; background: rgba(24, 17, 43, .78); box-shadow: 0 0 22px rgba(120, 65, 218, .42), inset 0 0 20px rgba(181, 138, 255, .08); color: #eeeaf6; font-family: var(--font-mono); font-size: 1rem; letter-spacing: .25em; text-transform: uppercase; }
+.night-start:hover { border-color: #c4a5ff; background: rgba(43, 27, 71, .9); }
 .night-start svg { color: #eeeaf6; }
 
 

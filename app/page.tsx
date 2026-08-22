@@ -158,7 +158,7 @@ export default function Page() {
           </header> */}
           <section className="night-hero-copy">
             <div className="night-kicker">Digital cards for one night</div>
-            <h1 className="night-title">One Night<span className='text-accent'>Werewolf</span></h1>
+            <h1 className="night-title">One Night<span>Werewolf</span></h1>
             <div className="night-rule" aria-hidden="true"><i /></div>
             <p className="night-description">Keep the narrator. Replace the physical cards with a fast, private table on everyone&apos;s phone.</p>
             <div className="mt-6 flex w-full max-w-[35rem] flex-col gap-3 sm:flex-row">
