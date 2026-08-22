@@ -149,55 +149,35 @@ export default function Page() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className={mode === 'home' ? 'night-home' : 'min-h-screen bg-background text-foreground'}>
+      {mode === 'home' ? (
+        <div className="night-home-content">
+          <header className="night-brand">
+            <span className="night-brand-mark"><Moon size={18} /></span>
+            <span>ONE NIGHT</span>
+          </header>
+          <section className="mx-auto my-8">
+            <div className="night-kicker">Digital cards for one night</div>
+            <h1 className="night-title">One Night<span>Werewolf</span></h1>
+            <div className="night-rule" aria-hidden="true"><i /></div>
+            <p className="night-description">Keep the narrator. Replace the physical cards with a fast, private table on everyone&apos;s phone.</p>
+            <div className="my-6 flex w-full max-w-[25rem] flex-col gap-3 sm:flex-row">
+              <label className="sr-only" htmlFor="home-name">Your display name</label>
+              <input id="home-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your display name" className="h-12 min-w-0 flex-1 border border-border bg-card/70 px-4 text-foreground outline-none placeholder:text-muted-foreground focus:border-accent" />
+            </div>
+            <button onClick={() => name.trim() && setMode('join')} className="night-start">
+              <span>Enter the night</span><ArrowRight size={27} />
+            </button>
+          </section>
+        </div>
+      ) : (
       <div className="mx-auto min-h-screen max-w-6xl px-5 py-6 md:px-10">
-        <header className="flex items-center justify-between border-b border-border pb-6">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-full border border-accent text-accent">
-              <Moon size={19} />
-            </div>
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[.35em] text-accent">A night of suspicion</div>
-              <div className="font-serif text-xl">ONE NIGHT</div>
-            </div>
-          </div>
-          <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
-            <Shield size={14} /> Private rooms. No accounts.
-          </div>
+        <header className="flex items-center justify-center border-b border-border pb-6">
+          <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-full border border-accent text-accent"><Moon size={19} /></div><div><div className="font-mono text-[10px] uppercase tracking-[.35em] text-accent">A night of suspicion</div><div className="font-serif text-xl">ONE NIGHT</div></div></div>
+          <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><Shield size={14} /> Private rooms. No accounts.</div>
         </header>
 
-        {mode === 'home' && (
-          <section className="grid min-h-[75vh] items-center gap-12 py-12 lg:grid-cols-[1fr_.8fr]">
-            <div>
-              <div className="mb-6 flex items-center gap-2 font-mono text-xs uppercase tracking-[.3em] text-accent">
-                <Sparkles size={14} /> Social deduction, simplified
-              </div>
-              <h1 className="max-w-xl font-serif text-6xl leading-[.92] tracking-[-.04em] md:text-8xl">
-                Trust no one.
-                <br />
-                <span className="text-accent">Especially</span> yourself.
-              </h1>
-              <p className="mt-8 max-w-md leading-7 text-muted-foreground">Create a room, share the code, and play one complete round with secret roles, swaps, accusations, and a final vote.</p>
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your display name" className="h-12 rounded-md border border-border bg-card px-4 outline-none focus:border-accent" />
-                <button onClick={() => name.trim() && setMode('join')} className="h-12 rounded-md bg-accent px-6 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground">
-                  Enter the night
-                </button>
-              </div>
-            </div>
-            <div className="mx-auto w-full max-w-sm rotate-[-3deg] border border-accent/40 bg-card p-5">
-              <div className="flex aspect-[.72] flex-col justify-between border border-border p-6">
-                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Role card · keep secret</div>
-                <div className="text-center">
-                  <div className="mx-auto mb-6 text-6xl text-accent">◈</div>
-                  <div className="font-serif text-4xl">Unknown</div>
-                  <div className="mt-4 text-sm text-muted-foreground">Your starting role may not be your final role.</div>
-                </div>
-                <div className="font-mono text-[10px] text-muted-foreground">ONE NIGHT / 01</div>
-              </div>
-            </div>
-          </section>
-        )}
+        {mode === 'join' && null}
 
         {mode === 'join' && (
           <section className="mx-auto flex min-h-[75vh] w-full max-w-lg flex-col justify-center py-16">
@@ -246,6 +226,7 @@ export default function Page() {
               </button>
             </div>
 
+            <div className="board-stage">
             <GameTable
               room={room}
               role={actionRole}
@@ -277,6 +258,7 @@ export default function Page() {
               }}
             />
 
+            </div>
             <div className="game-console">
               <div className="mb-7 border-b border-border pb-6">
                 <div className="font-mono text-xs uppercase tracking-[.3em] text-accent">{room.phase === 'lobby' ? 'Waiting room' : room.phase.toUpperCase()}</div>
@@ -308,7 +290,6 @@ export default function Page() {
                 error={error}
               />
             )}
-            {!room.me?.isSpectator && room.phase === 'reveal' && <Reveal role={role} info={info} isHost={Boolean(me?.isHost)} remaining={room.remainingSeconds || 0} onAdvance={() => act('advance')} />}
             {!room.me?.isSpectator && room.phase === 'night' && (
               <>
                 <NightFixed
@@ -324,11 +305,13 @@ export default function Page() {
             )}
             {!room.me?.isSpectator && room.phase === 'discussion' && <Discussion room={room} isHost={Boolean(me?.isHost)} onAdvance={() => act('advance')} />}
             {!room.me?.isSpectator && room.phase === 'results' && <Results room={room} isHost={Boolean(me?.isHost)} onRestart={() => act('restart')} />}
+            {room.phase === 'reveal' && !room.me?.isSpectator && <Reveal role={role} info={info} isHost={Boolean(me?.isHost)} remaining={room.remainingSeconds || 0} onAdvance={() => act('advance')} />}
             {error && <p className="mt-6 text-sm text-destructive">{error}</p>}
             </div>
           </section>
         )}
       </div>
+      )}
     </main>
   )
 }
@@ -722,12 +705,13 @@ function Lobby({ room, onStart, onSettings, onRoles, error }: { room: Room; onSt
 
 function Reveal({ role, info, isHost, remaining, onAdvance }: { role: string; info: { title: string; text: string }; isHost: boolean; remaining: number; onAdvance: () => void }) {
   return (
-    <div className="mx-auto max-w-lg py-12">
+    <div className="reveal-overlay" role="dialog" aria-modal="true" aria-label={`${info.title} revealed`}>
+      <div className="reveal-modal mx-auto max-w-lg">
       <div className="border border-accent/40 bg-card p-6">
         <div className="flex aspect-[.75] flex-col justify-between border border-border p-8 text-center">
           <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Your starting card · keep secret</div>
           <div>
-            <RoleIcon role={role} className="mx-auto mb-6 h-40 w-28 rounded-lg bg-black" />
+            <RoleIcon role={role} className="reveal-role-card mx-auto mb-6 h-64 w-44 rounded-lg bg-black" />
             <h3 className="font-serif text-5xl">{info.title}</h3>
             <p className="mx-auto mt-5 max-w-xs leading-7 text-muted-foreground">{info.text}</p>
           </div>
@@ -740,6 +724,7 @@ function Reveal({ role, info, isHost, remaining, onAdvance }: { role: string; in
           Begin the night now <ArrowRight size={15} />
         </button>
       )}
+      </div>
     </div>
   )
 }
